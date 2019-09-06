@@ -9,6 +9,7 @@ func Suite(t *testing.T, k Key, v Value, expected interface{}) {
 }
 
 func TestConstants(t *testing.T) {
+	Suite(t, Key("any value"), AnyValue("any value"), "any value")
 	Suite(t, BuildID, OneBuildID("build ID"), "build ID")
 	Suite(t, CorrelationID, OneCorrelationID("correlation ID"), "correlation ID")
 	Suite(t, InBehalfOf, InBehalfOfServiceName("service name"), "service name")

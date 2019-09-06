@@ -45,7 +45,7 @@ InBehalfOfServiceName encapsulates an InBehalfOf.
 #### func (InBehalfOfServiceName) Value
 
 ```go
-func (t InBehalfOfServiceName) Value() interface{}
+func (v InBehalfOfServiceName) Value() interface{}
 ```
 Value returns the string representation.
 
@@ -60,7 +60,7 @@ IsDryRunExecution encapsulates an IsDryRun.
 #### func (IsDryRunExecution) Value
 
 ```go
-func (t IsDryRunExecution) Value() interface{}
+func (v IsDryRunExecution) Value() interface{}
 ```
 Value returns the boolean representation.
 
@@ -83,7 +83,7 @@ OneBuildID encapsulates a BuildID.
 #### func (OneBuildID) Value
 
 ```go
-func (t OneBuildID) Value() interface{}
+func (v OneBuildID) Value() interface{}
 ```
 Value returns the string representation.
 
@@ -98,7 +98,7 @@ OneCorrelationID encapsulates a CorrelationID.
 #### func (OneCorrelationID) Value
 
 ```go
-func (t OneCorrelationID) Value() interface{}
+func (v OneCorrelationID) Value() interface{}
 ```
 Value returns the string representation.
 
@@ -113,7 +113,7 @@ RequestedByServiceName encapsulates a WhosRequesting.
 #### func (RequestedByServiceName) Value
 
 ```go
-func (t RequestedByServiceName) Value() interface{}
+func (v RequestedByServiceName) Value() interface{}
 ```
 Value returns the string representation.
 
@@ -128,7 +128,7 @@ RunningInHost encapsulates a ServiceHost.
 #### func (RunningInHost) Value
 
 ```go
-func (t RunningInHost) Value() interface{}
+func (v RunningInHost) Value() interface{}
 ```
 Value returns the string representation.
 
@@ -143,7 +143,7 @@ RunningService encapsulates a ServiceName.
 #### func (RunningService) Value
 
 ```go
-func (t RunningService) Value() interface{}
+func (v RunningService) Value() interface{}
 ```
 Value returns the string representation.
 
@@ -157,3 +157,10 @@ type Value interface {
 ```
 
 Value defines a common way to access constant values.
+
+#### func  AnyValue
+
+```go
+func AnyValue(val interface{}) Value
+```
+AnyValue composes an unknown value type.
