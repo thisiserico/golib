@@ -16,58 +16,72 @@ type Value interface {
 	Value() interface{}
 }
 
+// AnyValue composes an unknown value type.
+func AnyValue(val interface{}) Value {
+	return anyValue{val: val}
+}
+
+type anyValue struct {
+	val interface{}
+}
+
+// Value returns the unknown value.
+func (v anyValue) Value() interface{} {
+	return v.val
+}
+
 // OneBuildID encapsulates a BuildID.
 type OneBuildID string
 
 // Value returns the string representation.
-func (t OneBuildID) Value() interface{} {
-	return string(t)
+func (v OneBuildID) Value() interface{} {
+	return string(v)
 }
 
 // OneCorrelationID encapsulates a CorrelationID.
 type OneCorrelationID string
 
 // Value returns the string representation.
-func (t OneCorrelationID) Value() interface{} {
-	return string(t)
+func (v OneCorrelationID) Value() interface{} {
+	return string(v)
 }
 
 // InBehalfOfServiceName encapsulates an InBehalfOf.
 type InBehalfOfServiceName string
 
 // Value returns the string representation.
-func (t InBehalfOfServiceName) Value() interface{} {
-	return string(t)
+func (v InBehalfOfServiceName) Value() interface{} {
+	return string(v)
 }
 
 // IsDryRunExecution encapsulates an IsDryRun.
 type IsDryRunExecution bool
 
 // Value returns the boolean representation.
-func (t IsDryRunExecution) Value() interface{} {
-	return bool(t)
+func (v IsDryRunExecution) Value() interface{} {
+	return bool(v)
 }
 
 // RunningInHost encapsulates a ServiceHost.
 type RunningInHost string
 
 // Value returns the string representation.
-func (t RunningInHost) Value() interface{} {
-	return string(t)
+func (v RunningInHost) Value() interface{} {
+	return string(v)
 }
 
 // RunningService encapsulates a ServiceName.
 type RunningService string
 
 // Value returns the string representation.
-func (t RunningService) Value() interface{} {
-	return string(t)
+func (v RunningService) Value() interface{} {
+	return string(v)
 }
 
 // RequestedByServiceName encapsulates a WhosRequesting.
 type RequestedByServiceName string
 
 // Value returns the string representation.
-func (t RequestedByServiceName) Value() interface{} {
-	return string(t)
+func (v RequestedByServiceName) Value() interface{} {
+	return string(v)
 }
