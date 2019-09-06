@@ -2,8 +2,8 @@
 --
     import "github.com/thisiserico/golib/constant"
 
-constant allows to keep the consistency between data point values by exposing
-wide spread keys and value abstractions.
+Package constant allows to keep the consistency between data point values by
+exposing wide spread keys and value abstractions.
 
 ## Usage
 
