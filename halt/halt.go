@@ -1,3 +1,4 @@
+// Package halt exposes a convenience method to deal with grafecul shutdowns.
 package halt
 
 import (
