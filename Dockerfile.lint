@@ -1,0 +1,10 @@
+FROM golang:1.13.0-alpine
+
+RUN apk --update add make
+
+WORKDIR /go/src/github.com/thisiserico/golib
+COPY . .
+
+RUN go get -u golang.org/x/lint/golint
+RUN make lint
+

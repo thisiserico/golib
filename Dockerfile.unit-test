@@ -1,0 +1,9 @@
+FROM golang:1.13.0-alpine
+
+RUN apk --update add make
+
+WORKDIR /go/src/github.com/thisiserico/golib
+COPY . .
+
+RUN make unit-test
+
