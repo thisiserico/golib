@@ -38,7 +38,9 @@ Is returns true when the given error stack contains the requested type.
 func New(args ...interface{}) error
 ```
 New facilitates the contextual error creation by accepting different argument
-types: context, error, message, type and key values. - nil
+types: context, error, message, type and tags.
+
+- nil
 
     Getting a nil `nil` value explicetely means that there was no error.
 
