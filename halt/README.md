@@ -2,6 +2,7 @@
 --
     import "github.com/thisiserico/golib/halt"
 
+Package halt exposes a convenience method to deal with grafecul shutdowns.
 
 ## Usage
 
