@@ -5,7 +5,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/thisiserico/golib/constant"
+	"github.com/thisiserico/golib/contxt"
 )
 
 // Name indicates the event type.
@@ -13,17 +15,44 @@ type Name string
 
 // Meta encapsulates execution information.
 type Meta struct {
-	createdAt     time.Time
-	correlationID constant.OneCorrelationID  `json:"correlation_id"`
-	isDryRun      constant.IsDryRunExecution `json:"is_dry_run"`
+	// CreatedAtUTC indicates the UTC time when the event was created.
+	CreatedAtUTC time.Time `json:"created_at_utc"`
+
+	// CorrelationID holds the request correlation ID.
+	CorrelationID constant.OneCorrelationID `json:"correlation_id"`
+
+	// IsDryRun indicates whether the execution is a dry run.
+	IsDryRun constant.IsDryRunExecution `json:"is_dry_run"`
 }
 
 // Event defines the event envelope.
 type Event struct {
-	id   constant.OneCorrelationID `json:"id"`
-	name Name                      `json:"name"`
-	msg  interface{}               `json:"msg"`
-	meta Meta                      `json:"meta"`
+	// ID holds the event unique ID, to be used for dempotency purposes.
+	ID constant.OneCorrelationID `json:"id"`
+
+	// Name indicates the event name or type.
+	Name Name `json:"name"`
+
+	// Msg holds the actual event payload.
+	Msg interface{} `json:"msg"`
+
+	// Meta encapsulates contextual information.
+	Meta Meta `json:"meta"`
+}
+
+// NewEvent creates an event of the specified name that uses contextual
+// information and the given message.
+func NewEvent(ctx context.Context, name Name, msg interface{}) Event {
+	return Event{
+		ID:   constant.OneCorrelationID(uuid.New().String()),
+		Name: name,
+		Msg:  msg,
+		Meta: Meta{
+			CreatedAtUTC:  time.Now().UTC(),
+			CorrelationID: contxt.CorrelationID(ctx),
+			IsDryRun:      contxt.IsDryRunExecution(ctx),
+		},
+	}
 }
 
 // Publisher defines the capabilities of any publisher.
