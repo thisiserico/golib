@@ -5,65 +5,99 @@ import (
 	"context"
 	"strings"
 
-	"github.com/thisiserico/golib/constant"
-	"github.com/thisiserico/golib/contxt"
+	"github.com/thisiserico/golib/v2/kv"
 )
 
 const (
-	// Contextual indicates that the error contains contextual tags.
-	Contextual = Type(iota)
-
-	// ContextError indicates a context.Context error.
-	ContextError
+	// Context indicates a context.Context error.
+	Context = Category("context-error")
 
 	// Decode indicates that decoding failed.
-	Decode
+	Decode = Category("decode")
 
 	// Encode indicates that encoding failed.
-	Encode
+	Encode = Category("encode")
 
 	// Existent indicates that an element already exists.
-	Existent
+	Existent = Category("existent")
 
-	// Invalid indicates a validatio constraint.
-	Invalid
+	// Invalid indicates a validation constraint.
+	Invalid = Category("invalid")
 
 	// Permanent indicates that the error is permanent – use along Transient.
-	Permanent
-
-	// PlainError indicates that the error is not contextual.
-	PlainError
+	Permanent = Category("permanent")
 
 	// NonExistent indicates that an element doesn't exist.
-	NonExistent
+	NonExistent = Category("non-existent")
 
 	// Transient indicates that the error is transient – use along Permanent.
-	Transient
+	Transient = Category("transient")
 )
 
-// Type indicates the error type on its inception.
-type Type int
-
-// TagPair encapsulates a key value pair.
-type TagPair struct {
-	key   constant.Key
-	value constant.Value
-}
-
-// Tag pairs a key with a value.
-func Tag(k constant.Key, v constant.Value) TagPair {
-	return TagPair{
-		key:   k,
-		value: v,
-	}
-}
+// Category indicates the error type on its inception.
+type Category string
 
 var _ error = contextualError{}
 
 type contextualError struct {
-	types []Type
-	msgs  []string
-	tags  map[constant.Key]constant.Value
+	msgs       []string
+	categories []Category
+	tags       []kv.Pair
+}
+
+// New creates a contextual error by accepting different arguments listed
+// below. The arguments need to be passed in that order to end up with a
+// consistent error.
+//
+// - `context.Context`
+//   If the context has erroed, a Context category is added to the list of
+//   categories.
+// - `string`
+//   The given message is added to the error stack.
+// - `contextualError`
+//   The existing error stack, categories and tags are preserved and/or extended.
+// - `error`
+//   The error message is added to the error stack.
+// - `Category`
+//   The given type is stacked. It can be later be accessed with `Is`.
+// - `kv.Pair`
+//   To provide more contextual data points.
+func New(args ...interface{}) error {
+	msgs := make([]string, 0)
+	categories := make([]Category, 0)
+	tags := make([]kv.Pair, 0)
+
+	for _, arg := range args {
+		switch t := arg.(type) {
+		case context.Context:
+			if err := t.Err(); err != nil {
+				categories = append(categories, Context)
+			}
+
+		case string:
+			msgs = append(msgs, t)
+
+		case contextualError:
+			msgs = append(msgs, t.msgs...)
+			categories = append(categories, t.categories...)
+			tags = append(tags, t.tags...)
+
+		case error:
+			msgs = append(msgs, t.Error())
+
+		case Category:
+			categories = append(categories, t)
+
+		case kv.Pair:
+			tags = append(tags, t)
+		}
+	}
+
+	return contextualError{
+		msgs:       msgs,
+		categories: categories,
+		tags:       tags,
+	}
 }
 
 // Error satisfies the error contract.
@@ -71,102 +105,28 @@ func (err contextualError) Error() string {
 	return strings.Join(err.msgs, ": ")
 }
 
-// New facilitates the contextual error creation by accepting different argument
-// types: context, error, message, type and tags.
-//
-// - `nil`
-//   Getting a nil `nil` value explicetely means that there was no error.
-// - `context.Context`
-//   If the context has erroed, a ContextError type is added to the list of
-//   types. The tags will be populated with the known contextual values and
-//   Contextual type.
-// - `string`
-//   The given message is added to the error stack.
-// - `contextualError`
-//   To keep the consistency between errors.
-// - `error`
-//   The error message is added to the error stack.
-// - `Type`
-//   The given type is stacked. It can be later be accessed with `Is`.
-// - `TagPair`
-//   To provide more contextual data points.
-func New(args ...interface{}) error {
-	types := make([]Type, 0)
-	msgs := make([]string, 0)
-	tags := make(map[constant.Key]constant.Value)
-
-	for _, arg := range args {
-		switch t := arg.(type) {
-		case nil:
-			return nil
-
-		case context.Context:
-			select {
-			case <-t.Done():
-				types = append(types, ContextError)
-
-			default:
-			}
-
-			types = append(types, Contextual)
-			tags[constant.BuildID] = contxt.BuildID(t)
-			tags[constant.ServiceHost] = contxt.RunningInHost(t)
-			tags[constant.ServiceName] = contxt.RunningService(t)
-			tags[constant.CorrelationID] = contxt.CorrelationID(t)
-			tags[constant.InBehalfOf] = contxt.InBehalfOfService(t)
-			tags[constant.WhosRequesting] = contxt.RequestedByService(t)
-			tags[constant.IsDryRun] = contxt.IsDryRunExecution(t)
-
-		case string:
-			msgs = append(msgs, t)
-
-		case contextualError:
-			types = append(types, t.types...)
-			msgs = append(msgs, t.msgs...)
-			tags = t.tags
-
-		case error:
-			msgs = append(msgs, t.Error())
-
-		case Type:
-			types = append(types, t)
-
-		case TagPair:
-			if _, exists := tags[t.key]; !exists {
-				tags[t.key] = t.value
-			}
-		}
-	}
-
-	return contextualError{
-		types: types,
-		msgs:  msgs,
-		tags:  tags,
-	}
-}
-
-// Is returns true when the given error stack contains the requested type.
-func Is(anyError error, requested Type) bool {
-	err, isContextual := anyError.(contextualError)
+// Is evaluates whether the given error matches a particular category.
+func Is(err error, cat Category) bool {
+	contextualErr, isContextual := err.(contextualError)
 	if !isContextual {
 		return false
 	}
 
-	for _, t := range err.types {
-		if t == requested {
+	for _, category := range contextualErr.categories {
+		if category == cat {
 			return true
 		}
 	}
 
-	return requested == PlainError
+	return false
 }
 
-// Tags returns a key-value dictionary.
-func Tags(anyError error) map[constant.Key]constant.Value {
-	err, isContextual := anyError.(contextualError)
+// Tags returns the error contextual data points.
+func Tags(err error) []kv.Pair {
+	contextualErr, isContextual := err.(contextualError)
 	if !isContextual {
 		return nil
 	}
 
-	return err.tags
+	return contextualErr.tags
 }
