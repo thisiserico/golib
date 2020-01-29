@@ -20,16 +20,16 @@ necessary.
 ```go
 type Event struct {
 	// ID holds the event unique ID, to be used for dempotency purposes.
-	ID constant.OneCorrelationID `json:"id"`
+	ID ID `json:"id"`
 
 	// Name indicates the event name or type.
 	Name Name `json:"name"`
 
-	// Msg holds the actual event payload.
-	Msg interface{} `json:"msg"`
-
 	// Meta encapsulates contextual information.
 	Meta Meta `json:"meta"`
+
+	// Payload holds the actual event message.
+	Payload interface{} `json:"payload"`
 }
 ```
 
@@ -51,6 +51,14 @@ type Handler func(context.Context, Event) error
 
 Handler handles the given event.
 
+#### type ID
+
+```go
+type ID string
+```
+
+ID indicates the event identifier.
+
 #### type Meta
 
 ```go
@@ -59,10 +67,13 @@ type Meta struct {
 	CreatedAtUTC time.Time `json:"created_at_utc"`
 
 	// CorrelationID holds the request correlation ID.
-	CorrelationID constant.OneCorrelationID `json:"correlation_id"`
+	CorrelationID string `json:"correlation_id"`
+
+	// Attempts indicates how many times the event has been handled.
+	Attempts int `json:"attempts"`
 
 	// IsDryRun indicates whether the execution is a dry run.
-	IsDryRun constant.IsDryRunExecution `json:"is_dry_run"`
+	IsDryRun bool `json:"is_dry_run"`
 }
 ```
 
@@ -80,8 +91,8 @@ Name indicates the event type.
 
 ```go
 type Publisher interface {
-	// Emit publishes the given event to the stream.
-	Emit(context.Context, Event) error
+	// Emit publishes the given events to the stream.
+	Emit(context.Context, ...Event) error
 
 	// Close should close any underlying connection.
 	Close() error
