@@ -74,6 +74,14 @@ The arguments need to be passed in that order to end up with a consistent error.
 
     To provide more contextual data points.
 
+#### func  Tag
+
+```go
+func Tag(key string, err error) (kv.Pair, bool)
+```
+Tag returns the requested tag if exists, a nil one otherwise. A boolean will
+indicate whether the tag exists.
+
 #### func  Tags
 
 ```go

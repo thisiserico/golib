@@ -130,3 +130,20 @@ func Tags(err error) []kv.Pair {
 
 	return contextualErr.tags
 }
+
+// Tag returns the requested tag if exists, a nil one otherwise. A boolean
+// will indicate whether the tag exists.
+func Tag(key string, err error) (kv.Pair, bool) {
+	contextualErr, isContextual := err.(contextualError)
+	if !isContextual {
+		return kv.New(key, nil), false
+	}
+
+	for _, tag := range contextualErr.tags {
+		if tag.Name() == key {
+			return tag, true
+		}
+	}
+
+	return kv.New(key, nil), false
+}

@@ -103,8 +103,10 @@ func TestCategories(t *testing.T) {
 
 func TestTheTagging(t *testing.T) {
 	t.Run("with a single tag", func(t *testing.T) {
-		const key = "key"
-		const val = "val"
+		const (
+			key = "key"
+			val = "val"
+		)
 
 		err := New(kv.New(key, val))
 		if err == nil {
@@ -116,6 +118,27 @@ func TestTheTagging(t *testing.T) {
 		}
 		if got := tags[0].String(); got != val {
 			t.Fatalf("invalid tag value, want %s got %s", val, got)
+		}
+	})
+
+	t.Run("obtaining a non-existing tag", func(t *testing.T) {
+		const key = "key"
+
+		err := New("no tags")
+		if _, exists := Tag(key, err); exists {
+			t.Fatal("the requested tag shouldn't exist")
+		}
+	})
+
+	t.Run("obtaining an existing tag", func(t *testing.T) {
+		const (
+			key = "key"
+			val = "val"
+		)
+
+		err := New(kv.New(key, val))
+		if _, exists := Tag(key, err); !exists {
+			t.Fatal("the requested tag should exist")
 		}
 	})
 }

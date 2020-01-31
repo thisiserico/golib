@@ -3,12 +3,17 @@ package memory
 import (
 	"context"
 
+	"github.com/lucsky/cuid"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
-var subscribers []*subscriber
+var subscribers map[string]*subscriber
+
+func init() {
+	subscribers = make(map[string]*subscriber)
+}
 
 type publisher struct{}
 
@@ -34,6 +39,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 func (p *publisher) Close() error { return nil }
 
 type subscriber struct {
+	id          string
 	maxAttempts int
 	events      chan pubsub.Event
 }
@@ -54,6 +60,7 @@ func WithMaxAttempts(retries int) SubscriberOption {
 // Defaults to 10.
 func WithQueueSize(queueSize int) SubscriberOption {
 	return func(sub *subscriber) {
+		close(sub.events)
 		sub.events = make(chan pubsub.Event, queueSize)
 	}
 }
@@ -61,6 +68,7 @@ func WithQueueSize(queueSize int) SubscriberOption {
 // NewSubscriber creates a new in memory subscriber implementation.
 func NewSubscriber(opts ...SubscriberOption) pubsub.Subscriber {
 	sub := &subscriber{
+		id:          cuid.New(),
 		maxAttempts: 1,
 		events:      make(chan pubsub.Event, 10),
 	}
@@ -69,11 +77,17 @@ func NewSubscriber(opts ...SubscriberOption) pubsub.Subscriber {
 		opt(sub)
 	}
 
-	subscribers = append(subscribers, sub)
+	subscribers[sub.id] = sub
 	return sub
 }
 
 func (s *subscriber) emitEvents(events ...pubsub.Event) {
+	defer func() {
+		// After closing a subscriber events channel, pending events can cause
+		// a panic.
+		recover()
+	}()
+
 	for _, event := range events {
 		s.events <- event
 	}
@@ -90,7 +104,7 @@ func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorH
 
 	case event := <-s.events:
 		for event.Meta.Attempts < s.maxAttempts {
-			event.Meta.Attempts += 1
+			event.Meta.Attempts++
 
 			if err := handler(ctx, event); err != nil {
 				eventForErrorHandler := &event
@@ -110,5 +124,7 @@ func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorH
 
 func (s *subscriber) Close() error {
 	close(s.events)
+	delete(subscribers, s.id)
+
 	return nil
 }
