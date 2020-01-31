@@ -1,6 +1,9 @@
 package kv
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestPair(t *testing.T) {
 	t.Run("using the raw value", func(t *testing.T) {
@@ -13,6 +16,19 @@ func TestPair(t *testing.T) {
 		}
 		if got := p.String(); value != got {
 			t.Fatalf("unexpected pair value, want %s, got %s", value, got)
+		}
+	})
+
+	t.Run("using an obfuscated raw value", func(t *testing.T) {
+		key := "key"
+		value := errors.New("error")
+		p := NewObfuscated(key, value)
+
+		if got := p.Name(); key != got {
+			t.Fatalf("unexpected pair name, want %s, got %s", key, got)
+		}
+		if got := p.Value(); redactedValue != got {
+			t.Fatalf("unexpected obfuscated pair value, want %s, got %s", redactedValue, got)
 		}
 	})
 
@@ -31,6 +47,15 @@ func TestPair(t *testing.T) {
 }
 
 func TestValue(t *testing.T) {
+	t.Run("in its original form", func(t *testing.T) {
+		want := errors.New("error")
+		v := Value(want)
+
+		if got := v.Value(); want != got {
+			t.Fatalf("unexpected raw value, want %s, got %s", want, got)
+		}
+	})
+
 	t.Run("as string", func(t *testing.T) {
 		want := "string"
 		v := Value(want)

@@ -50,8 +50,18 @@ func Value(v interface{}) Val {
 	return Val{raw: v}
 }
 
-// String returns the raw string value.
-// If the value is obfuscated, a redacted value is provided instead.
+// Value returns the raw value in its original form. If the value is obfuscated,
+// a redacted value is provided instead.
+func (v Val) Value() interface{} {
+	if v.isObfuscated {
+		return redactedValue
+	}
+
+	return v.raw
+}
+
+// String returns the raw string value. If the value is obfuscated, a redacted
+// value is provided instead.
 func (v Val) String() string {
 	if v.isObfuscated {
 		return redactedValue

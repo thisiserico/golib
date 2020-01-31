@@ -121,3 +121,11 @@ func (v Val) String() string
 ```
 String returns the raw string value. If the value is obfuscated, a redacted
 value is provided instead.
+
+#### func (Val) Value
+
+```go
+func (v Val) Value() interface{}
+```
+Value returns the raw value in its original form. If the value is obfuscated, a
+redacted value is provided instead.
