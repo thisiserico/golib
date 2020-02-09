@@ -1,4 +1,4 @@
-// Package halt exposes a convenience method to deal with grafecul shutdowns.
+// Package halt exposes a convenience method to deal with graceful shutdowns.
 package halt
 
 import (
@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/thisiserico/golib/constant"
-	"github.com/thisiserico/golib/log"
+	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/v2/logger"
 )
 
 // Halter will be used to wait for shutdown requests.
@@ -20,28 +20,28 @@ type Halter interface {
 var _ Halter = &halter{}
 
 type halter struct {
-	ctx    context.Context
-	logger log.Logger
+	ctx context.Context
+	log logger.Log
 }
 
-// New configures and returns the context.Context to use when shutting down.
-func New(ctx context.Context, logger log.Logger) (context.Context, Halter) {
+// New configures and returns the context to use when shutting down.
+func New(ctx context.Context, log logger.Log) (context.Context, Halter) {
 	stop := make(chan os.Signal)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		logger.Info(ctx, "stopper signal captured", log.Tags{constant.Key("signal"): constant.AnyValue(<-stop)})
+		log(ctx, "stopper signal captured", kv.New("signal", <-stop))
 		cancel()
 	}()
 
 	return ctx, &halter{
-		ctx:    ctx,
-		logger: logger,
+		ctx: ctx,
+		log: log,
 	}
 }
 
 func (s *halter) Wait() {
 	<-s.ctx.Done()
-	s.logger.Info(s.ctx, "stopper gracefully shuting down", nil)
+	s.log(s.ctx, "stopper gracefully shuting down")
 }

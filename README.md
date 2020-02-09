@@ -1,26 +1,58 @@
 # golib
+> An extremely opinionated set of modules
 
-## Libraries in this repo
-* [`github.com/thisiserico/golib/constant`](constant): keywords used everywhere
-* [`github.com/thisiserico/golib/contxt`](contxt): context manipulation
-* [`github.com/thisiserico/golib/di`](di): dependency injection factories
-* [`github.com/thisiserico/golib/errors`](errors): contextual errors
-* [`github.com/thisiserico/golib/halt`](halt): graceful shutdown mechanism
-* [`github.com/thisiserico/golib/log`](log): structured logs
-* [`github.com/thisiserico/golib/monitor`](monitor): monitoring metrics
-* [`github.com/thisiserico/golib/o11y`](o11y): observability facades
-* [`github.com/thisiserico/golib/pubsub`](pubsub): pubsub implementations
-* [`github.com/thisiserico/golib/trace`](trace): tracing utilities
+[![docs](https://godoc.org/github.com/thisiserico/golib?status.svg)](http://godoc.org/github.com/thisiserico/golib) [![report](https://goreportcard.com/badge/github.com/thisiserico/golib)](https://goreportcard.com/report/github.com/thisiserico/golib)
 
-[constant]: tree/master/constant
-[contxt]: tree/master/contxt
-[di]: tree/master/di
+
+## 🧐 Motivation
+When kicking off a new project, often times engineers decide not to care about consistency, debuggability and other little details that are not completely necessary to "deliver".
+This set of modules provide exactly that: a way to keep things consistent without getting in your way.
+
+At the same time, it provides an opinionated way on how certain elements should look like. Examples are the [`errors`][errors] or [`logger`][logger] packages,
+which expose a simpler interface from what we're used to.
+
+
+## 👩‍💻 Provided modules
+[`github.com/thisiserico/golib/v2/cntxt`][cntxt]
+
+The `cntxt` package lets you interact with known attributes that are required to keep in a context.
+
+[`github.com/thisiserico/golib/v2/errors`][errors]
+
+The `errors` package lets you create contextual errors using a simplified contract.
+
+[`github.com/thisiserico/golib/v2/halt`][halt]
+
+The `halt` package lets you handle graceful shutdowns.
+
+[`github.com/thisiserico/golib/v2/kv`][kv]
+
+The `kv` package lets you define key-value pairs to be used in multiple situations.
+
+[`github.com/thisiserico/golib/v2/logger`][logger]
+
+The `logger` package lets you log as you'd normally do, only a simplified contract is used.
+
+[`github.com/thisiserico/golib/v2/pubsub`][pubsub]
+
+The `pubsub` package lets you publish and subscribe to messages.
+
+[`github.com/thisiserico/golib/v2/trace`][trace]
+
+The `trace` package lets you trace operations, wrapping `opentracing` underneath.
+
+
+## 🥺 Missing packages
+Existing packages are subject to change.
+[Semantic versioning][semver] is used, backwards compatibility will be kept.
+
+
+[cntxt]: tree/master/cntxt
 [errors]: tree/master/errors
 [halt]: tree/master/halt
-[log]: tree/master/log
-[monitor]: tree/master/monitor
-[o11y]: tree/master/o11y
+[kv]: tree/master/kv
+[logger]: tree/master/logger
 [pubsub]: tree/master/pubsub
 [trace]: tree/master/trace
-[log]: tree/master/log
+[semver]: https://semver.org
 

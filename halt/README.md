@@ -2,7 +2,7 @@
 --
     import "github.com/thisiserico/golib/halt"
 
-Package halt exposes a convenience method to deal with grafecul shutdowns.
+Package halt exposes a convenience method to deal with graceful shutdowns.
 
 ## Usage
 
@@ -20,6 +20,6 @@ Halter will be used to wait for shutdown requests.
 #### func  New
 
 ```go
-func New(ctx context.Context, logger log.Logger) (context.Context, Halter)
+func New(ctx context.Context, log logger.Log) (context.Context, Halter)
 ```
-New configures and returns the context.Context to use when shutting down.
+New configures and returns the context to use when shutting down.

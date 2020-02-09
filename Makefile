@@ -10,27 +10,20 @@ help: ## prints this help
 	@grep -hE '^[\.a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "${_YELLOW}%-16s${_NC} %s\n", $$1, $$2}'
 
 setup: ## downloads dependencies
-	go get -u golang.org/x/lint/golint
-	go get -u github.com/robertkrimen/godocdown/godocdown
-	go mod tidy
+	GO111MODULE=off go get golang.org/x/lint/golint
+	GO111MODULE=off go get github.com/robertkrimen/godocdown/godocdown
 
 doc: ## generates markdown documentation
 	for d in ${PKG_DIRS}; do godocdown -o $$d/README.md $$d; done
 
 
-.PHONY: autogenerate lint unit-test # go commands
-autogenerate: ## autogenerates code
+.PHONY: generate lint test # go commands
+generate: ## generates code
 	go generate ./...
 
 lint: ## runs the code linter
-	go list ./... | grep -v /vendor/ | xargs golint -set_exit_status
+	go list ./... | xargs golint -set_exit_status
 
-unit-test: ## runs unit tests
+test: ## runs tests
 	go test -count=1 -cover -v ./...
-
-
-.PHONY: cicd # build pipeline commands
-cicd: ## runs the CI/CD pipeline
-	docker build -f Dockerfile.lint .
-	docker build -f Dockerfile.unit-test .
 

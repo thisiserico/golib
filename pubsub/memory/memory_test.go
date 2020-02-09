@@ -3,12 +3,18 @@ package memory
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/thisiserico/golib/errors"
-	"github.com/thisiserico/golib/pubsub"
+	"github.com/thisiserico/golib/v2/errors"
+	"github.com/thisiserico/golib/v2/pubsub"
 )
 
-func TestTheConsumerWithACanceledContext(t *testing.T) {
+var (
+	knownEventName = pubsub.Name("known")
+	errHandler     = errors.New("handler error")
+)
+
+func TestConsumingWithACanceledContext(t *testing.T) {
 	var messageWasHandled bool
 	handler := func(_ context.Context, _ pubsub.Event) error {
 		messageWasHandled = true
@@ -24,49 +30,121 @@ func TestTheConsumerWithACanceledContext(t *testing.T) {
 	cancel()
 
 	sub := NewSubscriber()
+	defer sub.Close()
 	sub.Consume(ctx, handler, errHandler)
 
 	if messageWasHandled {
 		t.Fatal("no messages should have been handled")
 	}
-
-	if !errors.Is(obtainedError, errors.ContextError) {
+	if !errors.Is(obtainedError, errors.Context) {
 		t.Fatalf("a context error was expected, got %v", obtainedError)
 	}
 }
 
-func TestWithSingleSubscription(t *testing.T) {
-	var messageWasHandled bool
+func TestAHandlerThatFails(t *testing.T) {
 	handler := func(_ context.Context, _ pubsub.Event) error {
-		messageWasHandled = true
-		return nil
+		return errHandler
 	}
 
-	errHandler := func(_ context.Context, _ error, _ *pubsub.Event) {}
+	var obtainedError error
+	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
+		obtainedError = err
+	}
 
 	pub := NewPublisher()
 	sub := NewSubscriber()
+	defer sub.Close()
 
-	event := pubsub.NewEvent(context.Background(), pubsub.Name("type"), nil)
+	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
 
 	sub.Consume(context.Background(), handler, errHandler)
 
-	if !messageWasHandled {
-		t.Fatal("the messages should have been handled")
+	if obtainedError == nil {
+		t.Fatal("an error had to be handled")
+	}
+
+	pair, exists := errors.Tag("attempt", obtainedError)
+	if !exists {
+		t.Fatal("the handling attempt had to be present in the error")
+	}
+	if got := pair.Int(); got != 1 {
+		t.Fatalf("invalid handling attempt, want 1, got %d", got)
 	}
 }
 
-func TestWithMultipleSubscriptions(t *testing.T) {
-	var messageWasHandledOnSubscriber1 bool
-	handlerForSubscriber1 := func(_ context.Context, _ pubsub.Event) error {
-		messageWasHandledOnSubscriber1 = true
-		return nil
+func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
+	const maxAttempts = 2
+
+	handler := func(_ context.Context, _ pubsub.Event) error {
+		return errHandler
 	}
 
-	var messageWasHandledOnSubscriber2 bool
-	handlerForSubscriber2 := func(_ context.Context, _ pubsub.Event) error {
-		messageWasHandledOnSubscriber2 = true
+	var (
+		obtainedErrors []error
+		obtainedEvents []*pubsub.Event
+	)
+	errHandler := func(_ context.Context, err error, event *pubsub.Event) {
+		obtainedErrors = append(obtainedErrors, err)
+		obtainedEvents = append(obtainedEvents, event)
+	}
+
+	pub := NewPublisher()
+	sub := NewSubscriber(WithMaxAttempts(maxAttempts))
+	defer sub.Close()
+
+	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
+	_ = pub.Emit(context.Background(), event)
+
+	sub.Consume(context.Background(), handler, errHandler)
+
+	if got := len(obtainedErrors); got != maxAttempts {
+		t.Fatalf("as many errors as handling attempts are expected, want %d, got %d", maxAttempts, got)
+	}
+
+	if obtainedEvents[0] == nil {
+		t.Fatal("non-final handling attempts should report the event")
+	}
+	if obtainedEvents[0].ID != event.ID {
+		t.Fatal("the reported event doesn't match the expected one")
+	}
+	if got := obtainedEvents[1]; got != nil {
+		t.Fatalf("the last handling attempt shouldn't report the event, got %v", got)
+	}
+
+	pair, exists := errors.Tag("attempt", obtainedErrors[1])
+	if !exists {
+		t.Fatal("the handling attempt had to be present in the error")
+	}
+	if got := pair.Int(); got != maxAttempts {
+		t.Fatalf("invalid handling attempt, want %d, got %d", maxAttempts, got)
+	}
+}
+
+func TestASubscriberWithAFilledUpQueue(t *testing.T) {
+	pub := NewPublisher()
+	sub := NewSubscriber(WithQueueSize(1))
+	defer sub.Close()
+
+	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
+	_ = pub.Emit(context.Background(), event)
+
+	var lastEventEmitted bool
+	go func() {
+		_ = pub.Emit(context.Background(), event)
+		lastEventEmitted = true
+	}()
+
+	<-time.After(100 * time.Millisecond)
+	if lastEventEmitted {
+		t.Fatal("the second event shouldn't be emitted")
+	}
+}
+
+func TestUsingMultipleSubscribers(t *testing.T) {
+	var handledEvents []pubsub.Event
+	handler := func(_ context.Context, e pubsub.Event) error {
+		handledEvents = append(handledEvents, e)
 		return nil
 	}
 
@@ -75,45 +153,22 @@ func TestWithMultipleSubscriptions(t *testing.T) {
 	pub := NewPublisher()
 	sub1 := NewSubscriber()
 	sub2 := NewSubscriber()
+	defer sub1.Close()
+	defer sub2.Close()
 
-	event := pubsub.NewEvent(context.Background(), pubsub.Name("type"), nil)
+	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
 
-	sub1.Consume(context.Background(), handlerForSubscriber1, errHandler)
-	sub2.Consume(context.Background(), handlerForSubscriber2, errHandler)
+	sub1.Consume(context.Background(), handler, errHandler)
+	sub2.Consume(context.Background(), handler, errHandler)
 
-	if !messageWasHandledOnSubscriber1 {
-		t.Fatal("the messages should have been handled")
-	}
-	if !messageWasHandledOnSubscriber2 {
-		t.Fatal("the messages should have been handled")
-	}
-}
-
-func TestWhenTheHandlerFails(t *testing.T) {
-	var messageWasHandled bool
-	handler := func(_ context.Context, _ pubsub.Event) error {
-		messageWasHandled = true
-		return errors.New("handler error")
+	if got := len(handledEvents); got != 2 {
+		t.Fatalf("the same event had to be handled twice, it's been handled %d", got)
 	}
 
-	var errorWasHandled bool
-	errHandler := func(_ context.Context, _ error, _ *pubsub.Event) {
-		errorWasHandled = true
-	}
-
-	pub := NewPublisher()
-	sub := NewSubscriber()
-
-	event := pubsub.NewEvent(context.Background(), pubsub.Name("type"), nil)
-	_ = pub.Emit(context.Background(), event)
-
-	sub.Consume(context.Background(), handler, errHandler)
-
-	if !messageWasHandled {
-		t.Fatal("the messages should have been handled")
-	}
-	if !errorWasHandled {
-		t.Fatal("the error should have been handled")
+	ev1 := handledEvents[0].ID
+	ev2 := handledEvents[1].ID
+	if ev1 != ev2 {
+		t.Fatal("the handled events don't match")
 	}
 }

@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/thisiserico/golib/constant"
-	"github.com/thisiserico/golib/contxt"
+	"github.com/thisiserico/golib/v2/cntxt"
 )
+
+// ID indicates the event identifier.
+type ID string
 
 // Name indicates the event type.
 type Name string
@@ -19,46 +21,49 @@ type Meta struct {
 	CreatedAtUTC time.Time `json:"created_at_utc"`
 
 	// CorrelationID holds the request correlation ID.
-	CorrelationID constant.OneCorrelationID `json:"correlation_id"`
+	CorrelationID string `json:"correlation_id"`
+
+	// Attempts indicates how many times the event has been handled.
+	Attempts int `json:"attempts"`
 
 	// IsDryRun indicates whether the execution is a dry run.
-	IsDryRun constant.IsDryRunExecution `json:"is_dry_run"`
+	IsDryRun bool `json:"is_dry_run"`
 }
 
 // Event defines the event envelope.
 type Event struct {
 	// ID holds the event unique ID, to be used for dempotency purposes.
-	ID constant.OneCorrelationID `json:"id"`
+	ID ID `json:"id"`
 
 	// Name indicates the event name or type.
 	Name Name `json:"name"`
 
-	// Msg holds the actual event payload.
-	Msg interface{} `json:"msg"`
-
 	// Meta encapsulates contextual information.
 	Meta Meta `json:"meta"`
+
+	// Payload holds the actual event message.
+	Payload interface{} `json:"payload"`
 }
 
 // NewEvent creates an event of the specified name that uses contextual
 // information and the given message.
 func NewEvent(ctx context.Context, name Name, msg interface{}) Event {
 	return Event{
-		ID:   constant.OneCorrelationID(uuid.New().String()),
+		ID:   ID(uuid.New().String()),
 		Name: name,
-		Msg:  msg,
 		Meta: Meta{
 			CreatedAtUTC:  time.Now().UTC(),
-			CorrelationID: contxt.CorrelationID(ctx),
-			IsDryRun:      contxt.IsDryRunExecution(ctx),
+			CorrelationID: cntxt.CorrelationID(ctx).String(),
+			IsDryRun:      cntxt.IsDryRun(ctx).Bool(),
 		},
+		Payload: msg,
 	}
 }
 
 // Publisher defines the capabilities of any publisher.
 type Publisher interface {
-	// Emit publishes the given event to the stream.
-	Emit(context.Context, Event) error
+	// Emit publishes the given events to the stream.
+	Emit(context.Context, ...Event) error
 
 	// Close should close any underlying connection.
 	Close() error
