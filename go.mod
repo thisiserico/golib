@@ -6,5 +6,4 @@ require (
 	github.com/apex/log v1.1.1
 	github.com/google/uuid v1.1.1
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/thisiserico/golib v0.0.0-20191028100709-9fb4f4b1ecde // indirect
 )
