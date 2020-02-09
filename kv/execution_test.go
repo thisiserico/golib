@@ -3,12 +3,12 @@ package kv
 import (
 	"testing"
 
-	"github.com/lucsky/cuid"
+	"github.com/google/uuid"
 )
 
 func TestExecution(t *testing.T) {
 	t.Run("build id", func(t *testing.T) {
-		want := cuid.New()
+		want := uuid.New().String()
 		p := BuildID(want)
 
 		if got := p.String(); want != got {
@@ -17,7 +17,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("service host", func(t *testing.T) {
-		want := cuid.New()
+		want := uuid.New().String()
 		p := ServiceHost(want)
 
 		if got := p.String(); want != got {
@@ -26,7 +26,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("service name", func(t *testing.T) {
-		want := cuid.New()
+		want := uuid.New().String()
 		p := ServiceName(want)
 
 		if got := p.String(); want != got {
@@ -35,7 +35,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("correlation id", func(t *testing.T) {
-		want := cuid.New()
+		want := uuid.New().String()
 		p := CorrelationID(want)
 
 		if got := p.String(); want != got {
@@ -44,7 +44,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("triggered by", func(t *testing.T) {
-		want := cuid.New()
+		want := uuid.New().String()
 		p := TriggeredBy(want)
 
 		if got := p.String(); want != got {

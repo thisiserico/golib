@@ -3,7 +3,7 @@ package memory
 import (
 	"context"
 
-	"github.com/lucsky/cuid"
+	"github.com/google/uuid"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/pubsub"
@@ -68,7 +68,7 @@ func WithQueueSize(queueSize int) SubscriberOption {
 // NewSubscriber creates a new in memory subscriber implementation.
 func NewSubscriber(opts ...SubscriberOption) pubsub.Subscriber {
 	sub := &subscriber{
-		id:          cuid.New(),
+		id:          uuid.New().String(),
 		maxAttempts: 1,
 		events:      make(chan pubsub.Event, 10),
 	}
