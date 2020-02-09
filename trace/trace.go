@@ -7,7 +7,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
-	"github.com/thisiserico/golib/constant"
+	"github.com/thisiserico/golib/v2/kv"
 )
 
 // Segment encapsulates a tracing span.
@@ -41,8 +41,8 @@ func NewSegment(ctx context.Context, name string) *Segment {
 }
 
 // Log records different events.
-func (s *Segment) Log(key constant.Key, value constant.Value) {
-	s.span.LogFields(log.Object(string(key), value))
+func (s *Segment) Log(tag kv.Pair) {
+	s.span.LogFields(log.Object(tag.Name(), tag.Value()))
 }
 
 // Finish finalizes the segment span.

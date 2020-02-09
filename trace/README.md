@@ -32,6 +32,6 @@ Finish finalizes the segment span.
 #### func (*Segment) Log
 
 ```go
-func (s *Segment) Log(key constant.Key, value constant.Value)
+func (s *Segment) Log(tag kv.Pair)
 ```
 Log records different events.
