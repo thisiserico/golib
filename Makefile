@@ -17,8 +17,8 @@ doc: ## generates markdown documentation
 	for d in ${PKG_DIRS}; do godocdown -o $$d/README.md $$d; done
 
 
-.PHONY: autogenerate lint test # go commands
-autogenerate: ## autogenerates code
+.PHONY: generate lint test # go commands
+generate: ## generates code
 	go generate ./...
 
 lint: ## runs the code linter
