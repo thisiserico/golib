@@ -1,7 +1,7 @@
 # golib
 > An extremely opinionated set of modules
 
-[![docs](https://godoc.org/github.com/thisiserico/golib?status.svg)](http://godoc.org/github.com/thisiserico/golib) [![report](https://goreportcard.com/badge/github.com/thisiserico/golib)](https://goreportcard.com/report/github.com/thisiserico/golib)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/mod/github.com/thisiserico/golib/v2?tab=packages)
 
 
 ## 🧐 Motivation
