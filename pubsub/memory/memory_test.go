@@ -102,14 +102,14 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatalf("as many errors as handling attempts are expected, want %d, got %d", maxAttempts, got)
 	}
 
-	if obtainedEvents[0] == nil {
-		t.Fatal("non-final handling attempts should report the event")
+	if got := obtainedEvents[0]; got != nil {
+		t.Fatalf("non-final handling attempts should not report the event, got %#v", got)
 	}
-	if obtainedEvents[0].ID != event.ID {
+	if obtainedEvents[1] == nil {
+		t.Fatal("the last handling attempt should report the event")
+	}
+	if obtainedEvents[1].ID != event.ID {
 		t.Fatal("the reported event doesn't match the expected one")
-	}
-	if got := obtainedEvents[1]; got != nil {
-		t.Fatalf("the last handling attempt shouldn't report the event, got %v", got)
 	}
 
 	pair, exists := errors.Tag("attempt", obtainedErrors[1])

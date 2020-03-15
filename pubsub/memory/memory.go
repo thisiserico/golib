@@ -108,7 +108,7 @@ func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorH
 
 			if err := handler(ctx, event); err != nil {
 				eventForErrorHandler := &event
-				if event.Meta.Attempts == s.maxAttempts {
+				if event.Meta.Attempts != s.maxAttempts {
 					eventForErrorHandler = nil
 				}
 
