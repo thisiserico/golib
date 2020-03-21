@@ -27,16 +27,19 @@ type Agent interface {
 	// GetSpan on the other hand, is encouraged to be used when the program
 	// is still dealing with the same unit of work.
 	GetSpan(context.Context) Span
+
+	// Flush completes any pending span in the program.
+	Flush()
 }
 
 // Span defines a way to inform the system about the context of a certain
 // execution.
 type Span interface {
-	// AddField allows to provide such context.
-	AddField(context.Context, kv.Pair)
+	// AddPair allows to provide such context.
+	AddPair(context.Context, kv.Pair)
 
-	// Send is used when the unit of work has completed.
-	Send()
+	// Complete is used when the unit of work has completed.
+	Complete()
 }
 
 // StartSpan generates a new span using the specified agent. Each agent will

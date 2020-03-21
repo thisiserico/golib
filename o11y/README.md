@@ -27,6 +27,9 @@ type Agent interface {
 	// GetSpan on the other hand, is encouraged to be used when the program
 	// is still dealing with the same unit of work.
 	GetSpan(context.Context) Span
+
+	// Flush completes any pending span in the program.
+	Flush()
 }
 ```
 
@@ -37,11 +40,11 @@ create a new one from scratch.
 
 ```go
 type Span interface {
-	// AddField allows to provide such context.
-	AddField(context.Context, kv.Pair)
+	// AddPair allows to provide such context.
+	AddPair(context.Context, kv.Pair)
 
-	// Send is used when the unit of work has completed.
-	Send()
+	// Complete is used when the unit of work has completed.
+	Complete()
 }
 ```
 

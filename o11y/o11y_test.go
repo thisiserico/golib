@@ -39,9 +39,20 @@ func TestThatEverythingIsDelegatedToTheAgent(t *testing.T) {
 			t.Fatalf("the span was unexpected, want %#v, got %#v", originalSpan, newSpan)
 		}
 	})
+
+	t.Run("when flusing the agent", func(t *testing.T) {
+		ag := newTestingAgent()
+		Register(ag)
+
+		ag.Flush()
+		if !ag.flushed {
+			t.Fatal("the agent had to be flushed")
+		}
+	})
 }
 
 type testingAgent struct {
+	flushed      bool
 	startedSpans []*testingSpan
 }
 
@@ -76,6 +87,10 @@ func (t *testingAgent) GetSpan(ctx context.Context) Span {
 	return ctx.Value(ctxKey("span")).(*testingSpan)
 }
 
-func (t *testingSpan) AddField(_ context.Context, _ kv.Pair) {}
+func (t *testingAgent) Flush() {
+	t.flushed = true
+}
 
-func (t *testingSpan) Send() {}
+func (t *testingSpan) AddPair(_ context.Context, _ kv.Pair) {}
+
+func (t *testingSpan) Complete() {}
