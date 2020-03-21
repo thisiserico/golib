@@ -60,7 +60,7 @@ func TestThatSpansCanBeObtained(t *testing.T) {
 }
 
 func TestThatSpansAreReported(t *testing.T) {
-	t.Run("once they are completed", func(t *testing.T) {
+	t.Run("in order once they are completed", func(t *testing.T) {
 		writer := memory.New()
 		log := logger.New(writer, logger.JSONOutput)
 		ag := Agent(log)
@@ -87,8 +87,8 @@ func TestThatSpansAreReported(t *testing.T) {
 			t.Fatal("only two log lines should have been written")
 		}
 
-		expectedFirstLine := fmt.Sprintf("[ %s ]", secondSpan)
-		expectedSecondLine := fmt.Sprintf("[ %s ]", firstSpan)
+		expectedFirstLine := fmt.Sprintf("[ %s ]", firstSpan)
+		expectedSecondLine := fmt.Sprintf("[ %s ]", secondSpan)
 		if got := firstLine.Message; got != expectedFirstLine {
 			t.Fatalf("unexpected first line, want %s, got %s", expectedFirstLine, got)
 		}

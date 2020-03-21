@@ -44,7 +44,9 @@ func (a *agent) GetSpan(ctx context.Context) o11y.Span {
 func (a *agent) Flush() {}
 
 type span struct {
-	log logger.Log
+	log       logger.Log
+	hasParent bool
+	child     *span
 
 	name   string
 	fields []kv.Pair
@@ -84,6 +86,11 @@ func newSpan(ctx context.Context, log logger.Log, name string) (context.Context,
 		fields: fields,
 	}
 
+	if val := ctx.Value(existingSpan); val != nil {
+		s.hasParent = true
+		val.(*span).child = s
+	}
+
 	ctx = context.WithValue(ctx, existingSpan, s)
 	return ctx, s
 }
@@ -98,6 +105,14 @@ func (s *span) AddPair(ctx context.Context, pair kv.Pair) {
 }
 
 func (s *span) Complete() {
+	if s.hasParent {
+		return
+	}
+
+	s.dump()
+}
+
+func (s *span) dump() {
 	elems := []interface{}{fmt.Sprintf("[ %s ]", s.name)}
 
 	if s.err != nil {
@@ -109,4 +124,9 @@ func (s *span) Complete() {
 	}
 
 	s.log(elems...)
+
+	if s.child == nil {
+		return
+	}
+	s.child.dump()
 }
