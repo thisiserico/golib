@@ -10,9 +10,10 @@ import (
 	"github.com/thisiserico/golib/v2/o11y"
 )
 
-const defaultSpanName = "new"
-
-var existingSpan = contextKey("existing_span")
+const (
+	defaultSpanName = "new"
+	existingSpan    = contextKey("existing_span")
+)
 
 type contextKey string
 
@@ -45,8 +46,9 @@ func (a *agent) Flush() {}
 type span struct {
 	log logger.Log
 
-	givenName string
-	fields    []kv.Pair
+	name   string
+	fields []kv.Pair
+	err    error
 }
 
 func newSpan(ctx context.Context, log logger.Log, name string) (context.Context, o11y.Span) {
@@ -77,9 +79,9 @@ func newSpan(ctx context.Context, log logger.Log, name string) (context.Context,
 	fields = append(fields, p)
 
 	s := &span{
-		log:       log,
-		givenName: name,
-		fields:    fields,
+		log:    log,
+		name:   name,
+		fields: fields,
 	}
 
 	ctx = context.WithValue(ctx, existingSpan, s)
@@ -87,18 +89,24 @@ func newSpan(ctx context.Context, log logger.Log, name string) (context.Context,
 }
 
 func (s *span) AddPair(ctx context.Context, pair kv.Pair) {
+	if err, isError := pair.Value().(error); isError {
+		s.err = err
+		return
+	}
+
 	s.fields = append(s.fields, pair)
 }
 
 func (s *span) Complete() {
-	elems := []interface{}{fmt.Sprintf("[ %s ]", s.givenName)}
+	elems := []interface{}{fmt.Sprintf("[ %s ]", s.name)}
+
+	if s.err != nil {
+		elems = append(elems, s.err)
+	}
+
 	for _, field := range s.fields {
 		elems = append(elems, field)
 	}
 
 	s.log(elems...)
-}
-
-func (s *span) name() string {
-	return s.givenName
 }

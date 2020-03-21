@@ -7,10 +7,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/thisiserico/golib/v2/cntxt"
+	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/logger"
 	"github.com/thisiserico/golib/v2/logger/memory"
 )
+
+var errContextual = errors.New("contextual")
 
 func TestThatSpansCanBeObtained(t *testing.T) {
 	writer := memory.New()
@@ -24,7 +27,7 @@ func TestThatSpansCanBeObtained(t *testing.T) {
 		if s == nil {
 			t.Fatal("a span had to be created")
 		}
-		if name := s.(*span).name(); name != spanName {
+		if name := s.(*span).name; name != spanName {
 			t.Fatalf("invalid span name, want %s, got %s", spanName, name)
 		}
 	})
@@ -37,7 +40,7 @@ func TestThatSpansCanBeObtained(t *testing.T) {
 		if s == nil {
 			t.Fatal("a span had to be created")
 		}
-		if name := s.(*span).name(); name != spanName {
+		if name := s.(*span).name; name != spanName {
 			t.Fatalf("invalid span name, want %s, got %s", spanName, name)
 		}
 	})
@@ -50,7 +53,7 @@ func TestThatSpansCanBeObtained(t *testing.T) {
 		if s == nil {
 			t.Fatal("a span had to be created")
 		}
-		if name := s.(*span).name(); name != spanName {
+		if name := s.(*span).name; name != spanName {
 			t.Fatalf("invalid span name, want %s, got %s", spanName, name)
 		}
 	})
@@ -141,6 +144,25 @@ func TestThatSpansAreReported(t *testing.T) {
 		}
 		if got := line.Fields["is_dry_run"]; got != true {
 			t.Fatalf("unexpected dry run indicator, got %t", got)
+		}
+	})
+
+	t.Run("taking errors into account", func(t *testing.T) {
+		writer := memory.New()
+		log := logger.New(writer, logger.JSONOutput)
+		ag := Agent(log)
+
+		name := uuid.New().String()
+		_, s := ag.StartSpan(context.Background(), name)
+		s.AddPair(context.Background(), kv.New("error", errContextual))
+		s.Complete()
+
+		line, _ := writer.Line(0)
+		if want := errContextual.Error(); want != line.Message {
+			t.Fatalf("unexpected log line message, want %s, got %s", want, line.Message)
+		}
+		if want := "error"; want != line.Level {
+			t.Fatalf("unexpected log line level, want %s, got %s", want, line.Level)
 		}
 	})
 
