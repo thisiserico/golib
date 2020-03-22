@@ -14,6 +14,7 @@ var agent Agent
 // Register allows clients to specify the agent they want to use under the
 // hood. All operations will be delegated to a specific agent. Calling this
 // method more than once will overwrite the previously specified strategy.
+// By default, a no-op agent is used.
 func Register(a Agent) {
 	agent = a
 }
