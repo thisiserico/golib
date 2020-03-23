@@ -113,7 +113,7 @@ func (s *span) Complete() {
 }
 
 func (s *span) dump() {
-	elems := []interface{}{fmt.Sprintf("[ %s ]", s.name)}
+	elems := []interface{}{fmt.Sprintf("%s", s.name)}
 
 	if s.err != nil {
 		elems = append(elems, s.err)

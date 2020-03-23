@@ -87,8 +87,8 @@ func TestThatSpansAreReported(t *testing.T) {
 			t.Fatal("only two log lines should have been written")
 		}
 
-		expectedFirstLine := fmt.Sprintf("[ %s ]", firstSpan)
-		expectedSecondLine := fmt.Sprintf("[ %s ]", secondSpan)
+		expectedFirstLine := fmt.Sprintf("%s", firstSpan)
+		expectedSecondLine := fmt.Sprintf("%s", secondSpan)
 		if got := firstLine.Message; got != expectedFirstLine {
 			t.Fatalf("unexpected first line, want %s, got %s", expectedFirstLine, got)
 		}

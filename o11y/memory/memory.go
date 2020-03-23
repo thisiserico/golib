@@ -94,13 +94,16 @@ func HasErroed(s o11y.Span) bool {
 // PairMatches indicates whether a pair with the provided key and value has
 // been reported.
 func PairMatches(s o11y.Span, key string, val interface{}) bool {
+	var matches bool
 	for _, pair := range s.(*span).fields {
 		if pair.Name() != key {
 			continue
 		}
 
-		return pair.Value() == val
+		// Do not return to match against the last occurrence of the pair,
+		// not the first one found.
+		matches = pair.Value() == val
 	}
 
-	return false
+	return matches
 }
