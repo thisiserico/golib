@@ -2,10 +2,12 @@ package memory
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/v2/o11y"
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
@@ -29,6 +31,13 @@ func NewPublisher(_ ...PublisherOption) pubsub.Publisher {
 // Emit will publish the provided events to all the existing subscribers.
 // This is a blocking operation, no errors will be produced.
 func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
+	ctx, span := o11y.StartSpan(ctx, "emitter")
+	defer span.Complete()
+
+	for i, ev := range events {
+		span.AddPair(ctx, kv.New(fmt.Sprintf("event_%d", i), ev.Name))
+	}
+
 	for _, sub := range subscribers {
 		sub.emitEvents(events...)
 	}
@@ -103,18 +112,28 @@ func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorH
 		errorHandler(ctx, errors.New(ctx), nil)
 
 	case event := <-s.events:
+		ctx, span := o11y.StartSpan(ctx, "consumer")
+		defer span.Complete()
+
 		for event.Meta.Attempts < s.maxAttempts {
+			span.AddPair(ctx, kv.New("attempt", event.Meta.Attempts))
 			event.Meta.Attempts++
 
 			if err := handler(ctx, event); err != nil {
 				eventForErrorHandler := &event
 				if event.Meta.Attempts != s.maxAttempts {
 					eventForErrorHandler = nil
+				} else {
+					span.AddPair(ctx, kv.New("error", err))
 				}
 
 				errorHandler(
 					ctx,
-					errors.New(err, kv.New("attempt", event.Meta.Attempts)),
+					errors.New(
+						err,
+						kv.New("attempt", event.Meta.Attempts),
+						kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
+					),
 					eventForErrorHandler,
 				)
 			}

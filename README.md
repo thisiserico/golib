@@ -13,33 +13,20 @@ which expose a simpler interface from what we're used to.
 
 
 ## 👩‍💻 Provided modules
-[`github.com/thisiserico/golib/v2/cntxt`][cntxt]
 
-The `cntxt` package lets you interact with known attributes that are required to keep in a context.
+The [`cntxt`][cntxt] package lets you interact with known attributes that are required to keep in a context.
 
-[`github.com/thisiserico/golib/v2/errors`][errors]
+The [`errors`][errors] package lets you create contextual errors using a simplified contract.
 
-The `errors` package lets you create contextual errors using a simplified contract.
+The [`halt`][halt] package lets you handle graceful shutdowns.
 
-[`github.com/thisiserico/golib/v2/halt`][halt]
+The [`kv`][kv] package lets you define key-value pairs to be used in multiple situations.
 
-The `halt` package lets you handle graceful shutdowns.
+The [`logger`][logger] package lets you log as you'd normally do, only a simplified contract is used.
 
-[`github.com/thisiserico/golib/v2/kv`][kv]
+The [`o11y`][o11y] package provides an abstraction to make a program observable.
 
-The `kv` package lets you define key-value pairs to be used in multiple situations.
-
-[`github.com/thisiserico/golib/v2/logger`][logger]
-
-The `logger` package lets you log as you'd normally do, only a simplified contract is used.
-
-[`github.com/thisiserico/golib/v2/pubsub`][pubsub]
-
-The `pubsub` package lets you publish and subscribe to messages.
-
-[`github.com/thisiserico/golib/v2/trace`][trace]
-
-The `trace` package lets you trace operations, wrapping `opentracing` underneath.
+The [`pubsub`][pubsub] package lets you publish and subscribe to messages.
 
 
 ## 🥺 Missing packages
@@ -47,12 +34,12 @@ Existing packages are subject to change.
 [Semantic versioning][semver] is used, backwards compatibility will be kept.
 
 
-[cntxt]: tree/master/cntxt
-[errors]: tree/master/errors
-[halt]: tree/master/halt
-[kv]: tree/master/kv
-[logger]: tree/master/logger
-[pubsub]: tree/master/pubsub
-[trace]: tree/master/trace
+[cntxt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/cntxt
+[errors]: https://pkg.go.dev/github.com/thisiserico/golib/v2/errors
+[halt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/halt
+[kv]: https://pkg.go.dev/github.com/thisiserico/golib/v2/kv
+[logger]: https://pkg.go.dev/github.com/thisiserico/golib/v2/logger
+[o11y]: https://pkg.go.dev/github.com/thisiserico/golib/v2/o11y
+[pubsub]: https://pkg.go.dev/github.com/thisiserico/golib/v2/pubsub
 [semver]: https://semver.org
 
