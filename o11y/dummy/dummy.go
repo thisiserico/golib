@@ -44,9 +44,10 @@ func (a *agent) GetSpan(ctx context.Context) o11y.Span {
 func (a *agent) Flush() {}
 
 type span struct {
-	log       logger.Log
-	hasParent bool
-	child     *span
+	log          logger.Log
+	hasParent    bool
+	child        *span
+	wasCompleted bool
 
 	name   string
 	fields []kv.Pair
@@ -105,10 +106,14 @@ func (s *span) AddPair(ctx context.Context, pair kv.Pair) {
 }
 
 func (s *span) Complete() {
+	if s.wasCompleted {
+		return
+	}
 	if s.hasParent {
 		return
 	}
 
+	s.wasCompleted = true
 	s.dump()
 }
 
