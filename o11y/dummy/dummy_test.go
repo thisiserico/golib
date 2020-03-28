@@ -97,6 +97,21 @@ func TestThatSpansAreReported(t *testing.T) {
 		}
 	})
 
+	t.Run("only once", func(t *testing.T) {
+		writer := memory.New()
+		log := logger.New(writer, logger.JSONOutput)
+		ag := Agent(log)
+
+		name := uuid.New().String()
+		_, s := ag.StartSpan(context.Background(), name)
+		s.Complete()
+		s.Complete()
+
+		if _, exists := writer.Line(1); exists {
+			t.Fatal("the span had to be completed once only")
+		}
+	})
+
 	t.Run("including contextual data", func(t *testing.T) {
 		const (
 			buildID       = "build_id"
