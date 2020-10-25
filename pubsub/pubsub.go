@@ -42,12 +42,12 @@ type Event struct {
 	Meta Meta `json:"meta"`
 
 	// Payload holds the actual event message.
-	Payload interface{} `json:"payload"`
+	Payload []byte `json:"payload"`
 }
 
 // NewEvent creates an event of the specified name that uses contextual
 // information and the given message.
-func NewEvent(ctx context.Context, name Name, msg interface{}) Event {
+func NewEvent(ctx context.Context, name Name, msg []byte) Event {
 	return Event{
 		ID:   ID(uuid.New().String()),
 		Name: name,

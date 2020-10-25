@@ -17,15 +17,32 @@ func init() {
 	subscribers = make(map[string]*subscriber)
 }
 
-type publisher struct{}
+type publisher struct {
+	id string
+}
 
 // PublisherOption allows to tweak publisher behavior while hidding the
 // library internals.
 type PublisherOption func(*publisher)
 
+// WithPublisherID indicates the publisher identifier for traceability purposes.
+func WithPublisherID(id string) PublisherOption {
+	return func(pub *publisher) {
+		pub.id = id
+	}
+}
+
 // NewPublisher creates a new in memory publisher implementation.
-func NewPublisher(_ ...PublisherOption) pubsub.Publisher {
-	return &publisher{}
+func NewPublisher(opts ...PublisherOption) pubsub.Publisher {
+	pub := &publisher{
+		id: uuid.New().String(),
+	}
+
+	for _, opt := range opts {
+		opt(pub)
+	}
+
+	return pub
 }
 
 // Emit will publish the provided events to all the existing subscribers.
@@ -33,6 +50,8 @@ func NewPublisher(_ ...PublisherOption) pubsub.Publisher {
 func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 	ctx, span := o11y.StartSpan(ctx, "emitter")
 	defer span.Complete()
+
+	span.AddPair(ctx, kv.New("id", p.id))
 
 	for i, ev := range events {
 		span.AddPair(ctx, kv.New(fmt.Sprintf("event_%d", i), ev.Name))
@@ -56,6 +75,13 @@ type subscriber struct {
 // SubscriberOption allows to tweak subscriber behavior while hidding the
 // library internals.
 type SubscriberOption func(*subscriber)
+
+// WithSubscriberID indicates the consumer identifier for traceability purposes.
+func WithSubscriberID(id string) SubscriberOption {
+	return func(sub *subscriber) {
+		sub.id = id
+	}
+}
 
 // WithMaxAttempts indicates how many times an event will be processed if the
 // handler erroes. Defaults to 1.
@@ -114,6 +140,9 @@ func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorH
 	case event := <-s.events:
 		ctx, span := o11y.StartSpan(ctx, "consumer")
 		defer span.Complete()
+
+		span.AddPair(ctx, kv.New("id", s.id))
+		span.AddPair(ctx, kv.New("event_name", event.Name))
 
 		for event.Meta.Attempts < s.maxAttempts {
 			span.AddPair(ctx, kv.New("attempt", event.Meta.Attempts))

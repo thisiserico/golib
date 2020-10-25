@@ -78,11 +78,16 @@ func (v Val) String() string {
 // Int returns the raw integer value.
 func (v Val) Int() int {
 	i, ok := v.raw.(int)
-	if !ok {
-		return 0
+	if ok {
+		return i
 	}
 
-	return i
+	f, ok := v.raw.(float64)
+	if ok {
+		return int(f)
+	}
+
+	return 0
 }
 
 // Bool returns the raw boolean value.
