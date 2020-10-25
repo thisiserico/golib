@@ -74,6 +74,15 @@ func TestValue(t *testing.T) {
 		}
 	})
 
+	t.Run("as int having an underlying float", func(t *testing.T) {
+		want := 24
+		v := Value(float64(want))
+
+		if got := v.Int(); want != got {
+			t.Fatalf("unexpected int, want %d, got %d", want, got)
+		}
+	})
+
 	t.Run("as bool", func(t *testing.T) {
 		want := true
 		v := Value(want)
