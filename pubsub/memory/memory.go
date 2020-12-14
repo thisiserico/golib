@@ -1,3 +1,6 @@
+// Package memory provides an in-memory pubsub mechanism.
+// Its usage is recommended when operating a monolith, an actual pubsub engine
+// has not yet been chosen or when working on POCs and the like.
 package memory
 
 import (

@@ -1,3 +1,5 @@
+// Package honeycomb provides an agent implementation that uses honeycomb
+// underneath.
 package honeycomb
 
 import (
