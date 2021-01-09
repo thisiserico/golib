@@ -29,9 +29,10 @@ The [`o11y`][o11y] package provides an abstraction to make a program observable.
 The [`pubsub`][pubsub] package lets you publish and subscribe to messages.
 
 
-## 🥺 Missing packages
+## 🥺 What's next
 Existing packages are subject to change.
 [Semantic versioning][semver] is used, backwards compatibility will be kept.
+Different concrete implementations or packages will be added when needed.
 
 
 [cntxt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/cntxt

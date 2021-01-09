@@ -131,11 +131,22 @@ func (s *subscriber) emitEvents(events ...pubsub.Event) {
 	}
 }
 
-// Consume will handle the given event. The error handler will be used if the
-// event handler erroes. Retries will take place as indicated, passing along an
-// error only when there're still retries left, an error and the actual event
-// otherwise. The error will always contain the handling attempt as a tag.
+// Consume will consume events as they are available. The error handler will be
+// used if the event handler erroes. Retries will take place as indicated,
+// passing along an error only when there're still retries left, an error and
+// the actual event otherwise. The error will always contain the handling
+// attempt as a tag.
 func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorHandler pubsub.ErrorHandler) {
+	for {
+		if err := ctx.Err(); err != nil {
+			break
+		}
+
+		s.consumeEvent(ctx, handler, errorHandler)
+	}
+}
+
+func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, errorHandler pubsub.ErrorHandler) {
 	select {
 	case <-ctx.Done():
 		errorHandler(ctx, errors.New(ctx), nil)

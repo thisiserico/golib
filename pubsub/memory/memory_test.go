@@ -39,8 +39,8 @@ func TestConsumingWithACanceledContext(t *testing.T) {
 	if messageWasHandled {
 		t.Fatal("no messages should have been handled")
 	}
-	if !errors.Is(obtainedError, errors.Context) {
-		t.Fatalf("a context error was expected, got %v", obtainedError)
+	if obtainedError != nil {
+		t.Fatalf("no errors were expected, got %v", obtainedError)
 	}
 	if memory.IsCompleted(o11y.GetSpan(ctx)) {
 		t.Fatal("no span should have been created, therefore completed")
@@ -54,6 +54,9 @@ func TestAHandlerThatFails(t *testing.T) {
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
+		if errors.Is(err, errors.Context) {
+			return
+		}
 		obtainedError = err
 	}
 
@@ -80,6 +83,7 @@ func TestAHandlerThatFails(t *testing.T) {
 	}
 
 	subCtx, _ := o11y.StartSpan(context.Background(), "")
+	subCtx, _ = context.WithTimeout(subCtx, 50*time.Millisecond)
 	sub.Consume(subCtx, handler, errHandler)
 
 	if obtainedError == nil {
@@ -116,6 +120,9 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		obtainedEvents []*pubsub.Event
 	)
 	errHandler := func(_ context.Context, err error, event *pubsub.Event) {
+		if errors.Is(err, errors.Context) {
+			return
+		}
 		obtainedErrors = append(obtainedErrors, err)
 		obtainedEvents = append(obtainedEvents, event)
 	}
@@ -128,6 +135,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 	_ = pub.Emit(context.Background(), event)
 
 	ctx, _ := o11y.StartSpan(context.Background(), "")
+	ctx, _ = context.WithTimeout(ctx, 50*time.Millisecond)
 	sub.Consume(ctx, handler, errHandler)
 
 	if got := len(obtainedErrors); got != maxAttempts {
@@ -187,7 +195,7 @@ func TestASubscriberWithAFilledUpQueue(t *testing.T) {
 		lastEventEmitted = true
 	}()
 
-	<-time.After(100 * time.Millisecond)
+	<-time.After(50 * time.Millisecond)
 	if lastEventEmitted {
 		t.Fatal("the second event shouldn't be emitted")
 	}
@@ -211,8 +219,9 @@ func TestUsingMultipleSubscribers(t *testing.T) {
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
 
-	sub1.Consume(context.Background(), handler, errHandler)
-	sub2.Consume(context.Background(), handler, errHandler)
+	go sub1.Consume(context.Background(), handler, errHandler)
+	go sub2.Consume(context.Background(), handler, errHandler)
+	<-time.After(50 * time.Millisecond)
 
 	if got := len(handledEvents); got != 2 {
 		t.Fatalf("the same event had to be handled twice, it's been handled %d", got)

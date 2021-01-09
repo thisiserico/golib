@@ -32,7 +32,7 @@ type Meta struct {
 
 // Event defines the event envelope.
 type Event struct {
-	// ID holds the event unique ID, to be used for dempotency purposes.
+	// ID holds the event unique ID, to be used for idempotency purposes.
 	ID ID `json:"id"`
 
 	// Name indicates the event name or type.
