@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,7 +34,6 @@ func TestConsumingWithACanceledContext(t *testing.T) {
 	cancel()
 
 	sub := NewSubscriber()
-	defer sub.Close()
 	sub.Consume(ctx, handler, errHandler)
 
 	if messageWasHandled {
@@ -45,6 +45,8 @@ func TestConsumingWithACanceledContext(t *testing.T) {
 	if memory.IsCompleted(o11y.GetSpan(ctx)) {
 		t.Fatal("no span should have been created, therefore completed")
 	}
+
+	sub.Close()
 }
 
 func TestAHandlerThatFails(t *testing.T) {
@@ -54,15 +56,11 @@ func TestAHandlerThatFails(t *testing.T) {
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
-			return
-		}
 		obtainedError = err
 	}
 
 	pub := NewPublisher()
 	sub := NewSubscriber()
-	defer sub.Close()
 
 	pubCtx, _ := o11y.StartSpan(context.Background(), "")
 	event1 := pubsub.NewEvent(pubCtx, knownEventName, nil)
@@ -106,6 +104,8 @@ func TestAHandlerThatFails(t *testing.T) {
 	if got := pair.Int(); got != 1 {
 		t.Fatalf("invalid handling attempt, want 1, got %d", got)
 	}
+
+	sub.Close()
 }
 
 func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
@@ -120,16 +120,12 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		obtainedEvents []*pubsub.Event
 	)
 	errHandler := func(_ context.Context, err error, event *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
-			return
-		}
 		obtainedErrors = append(obtainedErrors, err)
 		obtainedEvents = append(obtainedEvents, event)
 	}
 
 	pub := NewPublisher()
 	sub := NewSubscriber(WithMaxAttempts(maxAttempts))
-	defer sub.Close()
 
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
@@ -179,12 +175,13 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 	if got := pair.Bool(); got != true {
 		t.Fatalf("invalid is_last_attempt, want %t, got %T", true, got)
 	}
+
+	sub.Close()
 }
 
 func TestASubscriberWithAFilledUpQueue(t *testing.T) {
 	pub := NewPublisher()
 	sub := NewSubscriber(WithQueueSize(1))
-	defer sub.Close()
 
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
@@ -199,11 +196,22 @@ func TestASubscriberWithAFilledUpQueue(t *testing.T) {
 	if lastEventEmitted {
 		t.Fatal("the second event shouldn't be emitted")
 	}
+
+	handler := func(_ context.Context, _ pubsub.Event) error { return nil }
+	errHandler := func(_ context.Context, _ error, _ *pubsub.Event) {}
+
+	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	sub.Consume(ctx, handler, errHandler)
+	sub.Close()
 }
 
 func TestUsingMultipleSubscribers(t *testing.T) {
+	var lock sync.Mutex
 	var handledEvents []pubsub.Event
 	handler := func(_ context.Context, e pubsub.Event) error {
+		lock.Lock()
+		defer lock.Unlock()
+
 		handledEvents = append(handledEvents, e)
 		return nil
 	}
@@ -223,8 +231,10 @@ func TestUsingMultipleSubscribers(t *testing.T) {
 	go sub2.Consume(context.Background(), handler, errHandler)
 	<-time.After(50 * time.Millisecond)
 
+	lock.Lock()
+	defer lock.Unlock()
 	if got := len(handledEvents); got != 2 {
-		t.Fatalf("the same event had to be handled twice, it's been handled %d", got)
+		t.Fatalf("the same event had to be handled twice, it's been handled %d times", got)
 	}
 
 	ev1 := handledEvents[0].ID

@@ -19,5 +19,5 @@ lint: ## runs the code linter
 	go list ./... | xargs golint -set_exit_status
 
 test: ## runs tests
-	go test -count=1 -cover -v ./...
+	go test -count=1 -race -cover -v ./...
 
