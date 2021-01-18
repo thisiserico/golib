@@ -17,7 +17,7 @@ var (
 	errHandler     = errors.New("handler error")
 )
 
-func TestConsumingWithACanceledContext(t *testing.T) {
+func TestConsumingWithACancelledContext(t *testing.T) {
 	var messageWasHandled bool
 	handler := func(_ context.Context, _ pubsub.Event) error {
 		messageWasHandled = true
