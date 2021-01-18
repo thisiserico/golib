@@ -1,8 +1,11 @@
+// +build redis
+
 package redis
 
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"testing"
 	"time"
 
@@ -12,8 +15,10 @@ import (
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
+var redisAddress = flag.String("address", "127.0.0.1:6379", "redis string and port (defaults to 127.0.0.1:6379)")
+
 func TestThatUnknownEventsCannotBeEmitted(t *testing.T) {
-	pub := Publisher("127.0.0.1:6379", nil)
+	pub := Publisher(*redisAddress, nil)
 	event := pubsub.NewEvent(context.Background(), "unknown_event_name", nil)
 
 	err := pub.Emit(context.Background(), event)
@@ -32,7 +37,7 @@ func TestThatNothingGetsEmittedWhenTheContextIsCancelled(t *testing.T) {
 	stream := uuid.New().String()
 	eventName := uuid.New().String()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -57,7 +62,7 @@ func TestThatASubscriberRequiresAtLeastOneStream(t *testing.T) {
 		}
 	}()
 
-	_ = Subscriber(uuid.New().String(), "127.0.0.1:6379", nil)
+	_ = Subscriber(uuid.New().String(), *redisAddress, nil)
 }
 
 func TestThatNothingGetsConsumedWhenTheContextIsCancelled(t *testing.T) {
@@ -81,7 +86,7 @@ func TestThatNothingGetsConsumedWhenTheContextIsCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	sub := Subscriber(groupID, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
+	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
 	sub.Consume(ctx, handler, errHandler)
 
 	if messageWasHandled {
@@ -110,7 +115,7 @@ func TestThatNothingGetsConsumedWhenNoPreviousEventsHaveBeenEmitted(t *testing.T
 		obtainedError = err
 	}
 
-	sub := Subscriber(groupID, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
+	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
 	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	go sub.Consume(ctx, handler, errHandler)
 
@@ -140,11 +145,11 @@ func TestThatAFailedHandlingReportsAnError(t *testing.T) {
 		cancel()
 	}
 
-	sub := Subscriber(groupID, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
+	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
 	go sub.Consume(ctx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event)
 
@@ -180,14 +185,14 @@ func TestThatHandlingAttempsCanBeRequestedOnFailedHandlings(t *testing.T) {
 
 	sub := Subscriber(
 		groupID,
-		"127.0.0.1:6379",
-		[]Stream{StreamForSubscriber(stream)},
-		WithMaxAttempts(maxAttempts),
+		*redisAddress,
+		StreamsForSubscriber(stream),
+		HandlingNumberOfAttempts(maxAttempts),
 	)
 	go sub.Consume(ctx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event)
 
@@ -227,11 +232,11 @@ func TestConsumingOneEventFromOneStream(t *testing.T) {
 		obtainedError = err
 	}
 
-	sub := Subscriber(groupID, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
+	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
 	go sub.Consume(ctx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event)
 
@@ -273,9 +278,9 @@ func TestConsumingMultipleEventsFromOneStream(t *testing.T) {
 
 	sub := Subscriber(
 		groupID,
-		"127.0.0.1:6379",
-		[]Stream{StreamForSubscriber(stream)},
-		WithReadingSize(readSize),
+		*redisAddress,
+		StreamsForSubscriber(stream),
+		ReadingBatchCapacity(readSize),
 	)
 
 	// Trigger initial consumption so that the redis stream and consumer group
@@ -285,7 +290,7 @@ func TestConsumingMultipleEventsFromOneStream(t *testing.T) {
 	sub.Consume(setupCtx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event, event)
 
@@ -323,13 +328,13 @@ func TestConsumingOneEventFromMultipleStreams(t *testing.T) {
 
 	sub := Subscriber(
 		groupID,
-		"127.0.0.1:6379",
-		[]Stream{StreamForSubscriber(streamOne), StreamForSubscriber(streamTwo)},
+		*redisAddress,
+		StreamsForSubscriber(streamOne, streamTwo),
 	)
 	go sub.Consume(ctx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(streamOne, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(streamOne, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event)
 
@@ -374,9 +379,9 @@ func TestConsumingMultipleEventsFromMultipleStreams(t *testing.T) {
 
 	sub := Subscriber(
 		groupID,
-		"127.0.0.1:6379",
-		[]Stream{StreamForSubscriber(streamOne), StreamForSubscriber(streamTwo)},
-		WithReadingSize(readSize),
+		*redisAddress,
+		StreamsForSubscriber(streamOne, streamTwo),
+		ReadingBatchCapacity(readSize),
 	)
 
 	// Trigger initial consumption so that the redis stream and consumer group
@@ -386,7 +391,7 @@ func TestConsumingMultipleEventsFromMultipleStreams(t *testing.T) {
 	sub.Consume(setupCtx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{
+	pub := Publisher(*redisAddress, []Stream{
 		StreamForPublisher(streamOne, eventNameOne),
 		StreamForPublisher(streamTwo, eventNameTwo),
 	})
@@ -430,13 +435,13 @@ func TestConsumingFromMultipleSubscribers(t *testing.T) {
 	}
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {}
 
-	subOne := Subscriber(groupIDOne, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
-	subTwo := Subscriber(groupIDTwo, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
+	subOne := Subscriber(groupIDOne, *redisAddress, StreamsForSubscriber(stream))
+	subTwo := Subscriber(groupIDTwo, *redisAddress, StreamsForSubscriber(stream))
 	go subOne.Consume(ctxOne, handlerOne, errHandler)
 	go subTwo.Consume(ctxTwo, handlerTwo, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event)
 
@@ -460,7 +465,7 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	js, _ := json.Marshal(event)
 
-	client := &redis.Client{Addr: "127.0.0.1:6379"}
+	client := &redis.Client{Addr: *redisAddress}
 	// Make sure a consumer group exists for the stream.
 	_ = client.Query(context.Background(), "xgroup", "create", stream, groupID, "$", "mkstream")
 	// An event is added to and read from the stream, but never acknowledged, making it claimed.
@@ -468,7 +473,7 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 	_ = client.Query(context.Background(), "xreadgroup", "group", groupID, uuid.New().String(), "count", 1, "streams", stream, ">")
 
 	// Another event makes it to the stream before it's being consumed, making it not yet claimed.
-	pub := Publisher("127.0.0.1:6379", []Stream{StreamForPublisher(stream, eventName)})
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event = pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 	_ = pub.Emit(context.Background(), event)
 
@@ -492,7 +497,7 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 		obtainedError = err
 	}
 
-	sub := Subscriber(groupID, "127.0.0.1:6379", []Stream{StreamForSubscriber(stream)})
+	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
 	go sub.Consume(ctx, handler, errHandler)
 
 	// Yet another event is produced, this one while the subscriber is already consuming.

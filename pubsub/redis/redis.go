@@ -15,19 +15,17 @@ import (
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
-// Stream let's both, producers and consumers, know what redis streams to
-// interact with.
+// Stream let's both –producers and consumers– know what redis streams to interact with.
 type Stream struct {
-	// name specifies the stream name.
+	// name holds the stream name.
 	name string
 
-	// events specifies the event names that will use the specific stream in
-	// order to publish events.
+	// events holds the event names that will use the this stream in order to publish events.
 	events []string
 }
 
-// StreamForPublisher needs to be used to indicate what streams a concrete event
-// type needs to be sent to.
+// StreamForPublisher creates a Stream that will know the event types that will use a redis stream
+// with such name in order to publish messages into.
 func StreamForPublisher(name string, events ...string) Stream {
 	return Stream{
 		name:   name,
@@ -35,12 +33,15 @@ func StreamForPublisher(name string, events ...string) Stream {
 	}
 }
 
-// StreamForSubscriber needs to be used to indicate from what streams a
-// subscriber needs to get events from.
-func StreamForSubscriber(name string) Stream {
-	return Stream{
-		name: name,
+// StreamsForSubscriber creates a list of Stream to indicate all the redis streams a subscriber
+// has to read events from.
+func StreamsForSubscriber(names ...string) []Stream {
+	streams := make([]Stream, 0, len(names))
+	for _, name := range names {
+		streams = append(streams, Stream{name: name})
 	}
+
+	return streams
 }
 
 type publisher struct {
@@ -53,6 +54,7 @@ type publisher struct {
 	streamForEvent map[string]string
 }
 
+// Publisher creates a publisher that uses redis streams under the hood.
 func Publisher(address string, streams []Stream) pubsub.Publisher {
 	streamForEvents := make(map[string]string)
 	for _, stream := range streams {
@@ -78,7 +80,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		if !exists {
 			err := errors.New(
 				ctx,
-				"unknown stream for event",
+				"unknown redis stream for event",
 				kv.New("event_name", event.Name),
 				errors.NonExistent,
 				errors.Permanent,
@@ -92,12 +94,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		js, _ := json.Marshal(event)
 		err := p.client.Exec(ctx, "xadd", stream, "*", "event", js)
 		if err != nil {
-			err = errors.New(
-				ctx,
-				"redis publisher",
-				err,
-				errors.Permanent,
-			)
+			err = errors.New(ctx, "redis xadd", err, errors.Permanent)
 			span.AddPair(ctx, kv.New("error", err))
 
 			return err
@@ -111,43 +108,46 @@ func (p *publisher) Close() error {
 	return nil
 }
 
-// SubscriberOption allows to tweak subscriber behavior while hidding the
-// library internals.
+// SubscriberOption allows to tweak subscriber behavior.
 type SubscriberOption func(*subscriber)
 
-// WithMaxAttempts indicates how many times an event will be processed if the
-// handler erroes. Defaults to 1.
-func WithMaxAttempts(retries int) SubscriberOption {
+// HandlingNumberOfAttempts indicates how many times an event will be processed if the handler
+// errors. Defaults to 1, that is, no automatic retries.
+func HandlingNumberOfAttempts(attempts int) SubscriberOption {
 	return func(sub *subscriber) {
-		sub.maxAttempts = retries
+		sub.maxAttempts = attempts
 	}
 }
 
-// WithReadingSize indicates how many events can be taken out of the stream
-// at once. Defaults to 10.
-func WithReadingSize(readSize int) SubscriberOption {
+// ReadingBatchCapacity indicates how many events can be taken out of the stream at once.
+// Defaults to 10.
+func ReadingBatchCapacity(capacity int) SubscriberOption {
 	return func(sub *subscriber) {
-		sub.readSize = readSize
+		sub.readCapacity = capacity
 	}
 }
 
 type subscriber struct {
-	client     *redis.Client
-	groupID    string
-	consumerID string
-	// streams []string
-	streams     []interface{}
-	maxAttempts int
-	readSize    int
+	client       *redis.Client
+	groupID      string
+	consumerID   string
+	streams      []string
+	maxAttempts  int
+	readCapacity int
 }
 
+// Subscriber creates a subscriber that uses redis streams under the hood.
+// All the events that are handled (either successfully or by using the error handler), won't be
+// consumed again. On the other hand, only events that can't be handled by the client will be
+// re-consumed automatically.
+// This makes the error handler responsible for dealing with unsuccessful handlings. The use of
+// DLQs is encouraged to ensure all events are processed.
 func Subscriber(groupID, address string, streams []Stream, opts ...SubscriberOption) pubsub.Subscriber {
 	if len(streams) < 1 {
-		panic("at least one stream to subscribe to is required")
+		panic("at least one stream to read from is required")
 	}
 
-	var strs []interface{}
-	// var strs []string
+	var strs []string
 	for _, stream := range streams {
 		strs = append(strs, stream.name)
 	}
@@ -156,11 +156,11 @@ func Subscriber(groupID, address string, streams []Stream, opts ...SubscriberOpt
 		client: &redis.Client{
 			Addr: address,
 		},
-		groupID:     groupID,
-		consumerID:  uuid.New().String(),
-		streams:     strs,
-		maxAttempts: 1,
-		readSize:    10,
+		groupID:      groupID,
+		consumerID:   uuid.New().String(),
+		streams:      strs,
+		maxAttempts:  1,
+		readCapacity: 10,
 	}
 
 	for _, opt := range opts {
@@ -177,8 +177,9 @@ func (s *subscriber) Consume(
 ) {
 	s.createConsumerGroupForEachStream(ctx)
 
+	// TODO run this asynchronously, using a s.consumeTimeout property as "idle-time".
 	for _, stream := range s.streams {
-		resp := s.client.Query(ctx, "xautoclaim", stream, s.groupID, s.consumerID, 0, "0-0", "count", s.readSize)
+		resp := s.client.Query(ctx, "xautoclaim", stream, s.groupID, s.consumerID, 0, "0-0", "count", s.readCapacity)
 		var nextStartID interface{}
 		_ = resp.Next(&nextStartID)
 
@@ -186,24 +187,22 @@ func (s *subscriber) Consume(
 		_ = resp.Next(&entries)
 
 		for _, redisEntry := range entries {
-			s.consumeSingleEntry(
-				ctx,
-				stream.(string),
-				redisEntry,
-				handler,
-				errHandler,
-			)
+			s.consumeSingleEntry(ctx, stream, redisEntry, handler, errHandler)
 		}
 		if err := resp.Close(); err != nil {
-			errHandler(ctx, errors.New(ctx, "redis xautoclaim error", err, errors.Permanent), nil)
+			errHandler(ctx, errors.New(ctx, "redis xautoclaim", err, errors.Permanent), nil)
 		}
 	}
 
-	args := []interface{}{"group", s.groupID, s.consumerID, "count", s.readSize, "block", 0, "streams"}
-	args = append(args, s.streams...)
+	// There has to be an easier way to compose the list below...
+	args := []interface{}{"group", s.groupID, s.consumerID, "count", s.readCapacity, "block", 0, "streams"}
+	for _, stream := range s.streams {
+		args = append(args, stream)
+	}
 	for range s.streams {
 		args = append(args, ">")
 	}
+
 	for {
 		if err := ctx.Err(); err != nil {
 			break
@@ -214,20 +213,24 @@ func (s *subscriber) Consume(
 		for resp.Next(&redisResponse) {
 			redisStreams := redisResponse.([]interface{})
 			entries := redisStreams[1].([]interface{})
+			streamID := string(redisStreams[0].([]byte))
 
 			for _, redisEntry := range entries {
-				s.consumeSingleEntry(
-					ctx,
-					string(redisStreams[0].([]byte)),
-					redisEntry,
-					handler,
-					errHandler,
-				)
+				s.consumeSingleEntry(ctx, streamID, redisEntry, handler, errHandler)
 			}
 		}
 		if err := resp.Close(); err != nil {
-			errHandler(ctx, errors.New(ctx, "redis xreadgroup error", err, errors.Permanent), nil)
+			errHandler(ctx, errors.New(ctx, "redis xreadgroup", err, errors.Permanent), nil)
 		}
+	}
+}
+
+// createConsumerGroupForEachStream ensures that the consumer group exists for
+// all the streams. This allows to consume from all the streams at once using
+// a single XREADGROUP command.
+func (s *subscriber) createConsumerGroupForEachStream(ctx context.Context) {
+	for _, stream := range s.streams {
+		_ = s.client.Query(ctx, "xgroup", "create", stream, s.groupID, "$", "mkstream")
 	}
 }
 
@@ -270,15 +273,6 @@ func (s *subscriber) consumeSingleEntry(
 	}
 
 	_ = s.client.Exec(context.Background(), "xack", streamID, s.groupID, entryID)
-}
-
-// createConsumerGroupForEachStream ensures that the consumer group exists for
-// all the streams. This allows to consume from all the streams at once using
-// a single XREADGROUP command.
-func (s *subscriber) createConsumerGroupForEachStream(ctx context.Context) {
-	for _, stream := range s.streams {
-		_ = s.client.Query(ctx, "xgroup", "create", stream, s.groupID, "$", "mkstream")
-	}
 }
 
 func (s *subscriber) Close() error {
