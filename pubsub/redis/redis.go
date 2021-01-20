@@ -1,5 +1,6 @@
 // Package redis provides a way to interact with redis streams.
 // segmentio/redis-go is used underneath.
+// Redis version >= 6.2 is required.
 package redis
 
 import (
@@ -72,7 +73,7 @@ func Publisher(address string, streams []Stream) pubsub.Publisher {
 }
 
 func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
-	ctx, span := o11y.StartSpan(ctx, "emitter")
+	ctx, span := o11y.StartSpan(ctx, "redis emitter")
 	defer span.Complete()
 
 	for i, event := range events {
@@ -176,23 +177,7 @@ func (s *subscriber) Consume(
 	errHandler pubsub.ErrorHandler,
 ) {
 	s.createConsumerGroupForEachStream(ctx)
-
-	// TODO run this asynchronously, using a s.consumeTimeout property as "idle-time".
-	for _, stream := range s.streams {
-		resp := s.client.Query(ctx, "xautoclaim", stream, s.groupID, s.consumerID, 0, "0-0", "count", s.readCapacity)
-		var nextStartID interface{}
-		_ = resp.Next(&nextStartID)
-
-		var entries []interface{}
-		_ = resp.Next(&entries)
-
-		for _, redisEntry := range entries {
-			s.consumeSingleEntry(ctx, stream, redisEntry, handler, errHandler)
-		}
-		if err := resp.Close(); err != nil {
-			errHandler(ctx, errors.New(ctx, "redis xautoclaim", err, errors.Permanent), nil)
-		}
-	}
+	s.handleClaimedButNotProcessedEvents(ctx, handler, errHandler)
 
 	// There has to be an easier way to compose the list below...
 	args := []interface{}{"group", s.groupID, s.consumerID, "count", s.readCapacity, "block", 0, "streams"}
@@ -220,7 +205,8 @@ func (s *subscriber) Consume(
 			}
 		}
 		if err := resp.Close(); err != nil {
-			errHandler(ctx, errors.New(ctx, "redis xreadgroup", err, errors.Permanent), nil)
+			err = errors.New(ctx, "redis xreadgroup", err, errors.Permanent)
+			errHandler(ctx, err, nil)
 		}
 	}
 }
@@ -229,8 +215,46 @@ func (s *subscriber) Consume(
 // all the streams. This allows to consume from all the streams at once using
 // a single XREADGROUP command.
 func (s *subscriber) createConsumerGroupForEachStream(ctx context.Context) {
+	ctx, span := o11y.StartSpan(ctx, "redis consumer group set up")
+	defer span.Complete()
+
+	span.AddPair(ctx, kv.New("group_id", s.groupID))
+	span.AddPair(ctx, kv.New("consumer_id", s.consumerID))
+
 	for _, stream := range s.streams {
 		_ = s.client.Query(ctx, "xgroup", "create", stream, s.groupID, "$", "mkstream")
+	}
+}
+
+func (s *subscriber) handleClaimedButNotProcessedEvents(
+	ctx context.Context,
+	handler pubsub.Handler,
+	errHandler pubsub.ErrorHandler,
+) {
+	// TODO run this asynchronously, using a s.consumeTimeout property as "idle-time".
+
+	ctx, span := o11y.StartSpan(ctx, "redis potential failure recovery")
+	defer span.Complete()
+
+	span.AddPair(ctx, kv.New("group_id", s.groupID))
+	span.AddPair(ctx, kv.New("consumer_id", s.consumerID))
+
+	for _, stream := range s.streams {
+		resp := s.client.Query(ctx, "xautoclaim", stream, s.groupID, s.consumerID, 0, "0-0", "count", s.readCapacity)
+		var nextStartID interface{}
+		_ = resp.Next(&nextStartID)
+
+		var entries []interface{}
+		_ = resp.Next(&entries)
+
+		for _, redisEntry := range entries {
+			s.consumeSingleEntry(ctx, stream, redisEntry, handler, errHandler)
+		}
+		if err := resp.Close(); err != nil {
+			err = errors.New(ctx, "redis xautoclaim", err, errors.Permanent)
+			span.AddPair(ctx, kv.New("error", err))
+			errHandler(ctx, err, nil)
+		}
 	}
 }
 
@@ -244,6 +268,12 @@ func (s *subscriber) consumeSingleEntry(
 	handler pubsub.Handler,
 	errHandler pubsub.ErrorHandler,
 ) {
+	ctx, span := o11y.StartSpan(ctx, "redis consumer")
+	defer span.Complete()
+
+	span.AddPair(ctx, kv.New("group_id", s.groupID))
+	span.AddPair(ctx, kv.New("consumer_id", s.consumerID))
+
 	entry := redisEntry.([]interface{})
 	entryID := string(entry[0].([]byte))
 	fields := entry[1].([]interface{})
@@ -251,13 +281,18 @@ func (s *subscriber) consumeSingleEntry(
 	var event pubsub.Event
 	_ = json.Unmarshal(fields[1].([]byte), &event)
 
+	span.AddPair(ctx, kv.New("event_name", event.Name))
+
 	for event.Meta.Attempts < s.maxAttempts {
+		span.AddPair(ctx, kv.New("attempt", event.Meta.Attempts))
 		event.Meta.Attempts++
 
 		if err := handler(ctx, event); err != nil {
 			eventForErrorHandler := &event
 			if event.Meta.Attempts != s.maxAttempts {
 				eventForErrorHandler = nil
+			} else {
+				span.AddPair(ctx, kv.New("error", err))
 			}
 
 			errHandler(

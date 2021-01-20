@@ -12,16 +12,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/segmentio/redis-go"
 	"github.com/thisiserico/golib/v2/errors"
+	"github.com/thisiserico/golib/v2/o11y"
+	"github.com/thisiserico/golib/v2/o11y/memory"
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
 var redisAddress = flag.String("address", "127.0.0.1:6379", "redis string and port (defaults to 127.0.0.1:6379)")
 
 func TestThatUnknownEventsCannotBeEmitted(t *testing.T) {
+	ctx, _ := o11y.StartSpan(context.Background(), "")
+
 	pub := Publisher(*redisAddress, nil)
 	event := pubsub.NewEvent(context.Background(), "unknown_event_name", nil)
 
-	err := pub.Emit(context.Background(), event)
+	err := pub.Emit(ctx, event)
 	if err == nil {
 		t.Fatal("an error was expected, got none")
 	}
@@ -30,6 +34,13 @@ func TestThatUnknownEventsCannotBeEmitted(t *testing.T) {
 	}
 	if !errors.Is(err, errors.Permanent) {
 		t.Fatalf("a permanent error was expected, got %#v", err)
+	}
+
+	if !memory.IsCompleted(o11y.GetSpan(ctx)) {
+		t.Fatal("the publisher span should have been completed")
+	}
+	if !memory.HasErroed(o11y.GetSpan(ctx)) {
+		t.Fatal("an error was expected")
 	}
 }
 
@@ -40,7 +51,8 @@ func TestThatNothingGetsEmittedWhenTheContextIsCancelled(t *testing.T) {
 	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
 	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, _ := o11y.StartSpan(context.Background(), "")
+	ctx, cancel := context.WithCancel(ctx)
 	cancel()
 
 	err := pub.Emit(ctx, event)
@@ -52,6 +64,13 @@ func TestThatNothingGetsEmittedWhenTheContextIsCancelled(t *testing.T) {
 	}
 	if !errors.Is(err, errors.Permanent) {
 		t.Fatalf("a permanent error was expected, got %#v", err)
+	}
+
+	if !memory.IsCompleted(o11y.GetSpan(ctx)) {
+		t.Fatal("the publisher span should have been completed")
+	}
+	if !memory.HasErroed(o11y.GetSpan(ctx)) {
+		t.Fatal("an error was expected")
 	}
 }
 
@@ -83,7 +102,8 @@ func TestThatNothingGetsConsumedWhenTheContextIsCancelled(t *testing.T) {
 		obtainedError = err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, _ := o11y.StartSpan(context.Background(), "")
+	ctx, cancel := context.WithCancel(ctx)
 	cancel()
 
 	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
