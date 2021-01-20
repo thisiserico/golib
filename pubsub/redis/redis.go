@@ -17,6 +17,8 @@ import (
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
+const streamCapacity = 1000000
+
 // Stream let's both –producers and consumers– know what redis streams to interact with.
 type Stream struct {
 	// name holds the stream name.
@@ -24,14 +26,27 @@ type Stream struct {
 
 	// events holds the event names that will use the this stream in order to publish events.
 	events []string
+
+	// capacity indicates how many approximate events will live in a stream at most. This
+	// attribute can be read as XTRIM name MAXLEN ~ capacity. Defaults to streamCapacity.
+	capacity int
+}
+
+// CappedAt let clients indicate the maximum capacity for this specific redis stream. Notice that,
+// in the scenario of capping the same stream twice with different values, this client won't do
+// any special handling: it will overwrite previous capacity references.
+func (s Stream) CappedAt(capacity int) Stream {
+	s.capacity = streamCapacity
+	return s
 }
 
 // StreamForPublisher creates a Stream that will know the event types that will use a redis stream
 // with such name in order to publish messages into.
 func StreamForPublisher(name string, events ...string) Stream {
 	return Stream{
-		name:   name,
-		events: events,
+		name:     name,
+		events:   events,
+		capacity: streamCapacity,
 	}
 }
 
@@ -54,22 +69,29 @@ type publisher struct {
 	// streamForEvent indicates the redis stream to use for a specific
 	// event name.
 	streamForEvent map[string]string
+
+	// streamCapacities indicates the capacity of each redis stream.
+	streamCapacities map[string]int
 }
 
 // Publisher creates a publisher that uses redis streams under the hood.
 func Publisher(address string, streams []Stream) pubsub.Publisher {
 	streamForEvents := make(map[string]string)
+	streamCapacities := make(map[string]int)
 	for _, stream := range streams {
 		for _, event := range stream.events {
 			streamForEvents[event] = stream.name
 		}
+
+		streamCapacities[stream.name] = stream.capacity
 	}
 
 	return &publisher{
 		client: &redis.Client{
 			Addr: address,
 		},
-		streamForEvent: streamForEvents,
+		streamForEvent:   streamForEvents,
+		streamCapacities: streamCapacities,
 	}
 }
 
@@ -94,7 +116,8 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		span.AddPair(ctx, kv.New(fmt.Sprintf("event_%d", i), event.Name))
 
 		js, _ := json.Marshal(event)
-		err := p.client.Exec(ctx, "xadd", stream, "*", "event", js)
+		redisCapacity := p.streamCapacities[stream]
+		err := p.client.Exec(ctx, "xadd", stream, "maxlen", redisCapacity, "*", "event", js)
 		if err != nil {
 			err = errors.New(ctx, "redis xadd", err, errors.Permanent)
 			span.AddPair(ctx, kv.New("error", err))
@@ -138,13 +161,12 @@ func ConsumeTimeout(timeout time.Duration) SubscriberOption {
 }
 
 type subscriber struct {
-	client       *redis.Client
-	groupID      string
-	consumerID   string
-	streams      []string
-	maxAttempts  int
-	readCapacity int
-
+	client         *redis.Client
+	groupID        string
+	consumerID     string
+	streams        []string
+	maxAttempts    int
+	readCapacity   int
 	consumeTimeout time.Duration
 }
 
