@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/redis-go"
@@ -128,6 +129,14 @@ func ReadingBatchCapacity(capacity int) SubscriberOption {
 	}
 }
 
+// ConsumeTimeout indicates the maximum amount of time for an event to be in a handling state.
+// Defaults to 1s.
+func ConsumeTimeout(timeout time.Duration) SubscriberOption {
+	return func(sub *subscriber) {
+		sub.consumeTimeout = timeout
+	}
+}
+
 type subscriber struct {
 	client       *redis.Client
 	groupID      string
@@ -135,6 +144,8 @@ type subscriber struct {
 	streams      []string
 	maxAttempts  int
 	readCapacity int
+
+	consumeTimeout time.Duration
 }
 
 // Subscriber creates a subscriber that uses redis streams under the hood.
@@ -157,11 +168,12 @@ func Subscriber(groupID, address string, streams []Stream, opts ...SubscriberOpt
 		client: &redis.Client{
 			Addr: address,
 		},
-		groupID:      groupID,
-		consumerID:   uuid.New().String(),
-		streams:      strs,
-		maxAttempts:  1,
-		readCapacity: 10,
+		groupID:        groupID,
+		consumerID:     uuid.New().String(),
+		streams:        strs,
+		maxAttempts:    1,
+		readCapacity:   10,
+		consumeTimeout: time.Second,
 	}
 
 	for _, opt := range opts {
@@ -270,6 +282,8 @@ func (s *subscriber) consumeSingleEntry(
 ) {
 	ctx, span := o11y.StartSpan(ctx, "redis consumer")
 	defer span.Complete()
+
+	ctx, _ = context.WithTimeout(ctx, s.consumeTimeout)
 
 	span.AddPair(ctx, kv.New("group_id", s.groupID))
 	span.AddPair(ctx, kv.New("consumer_id", s.consumerID))

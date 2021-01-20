@@ -533,6 +533,43 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 	}
 }
 
+func TestThatASingleHandlingCanTimeout(t *testing.T) {
+	groupID := uuid.New().String()
+	stream := uuid.New().String()
+	eventName := uuid.New().String()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	handler := func(ctx context.Context, _ pubsub.Event) error {
+		select {
+		case <-ctx.Done():
+			cancel()
+
+		case <-time.After(time.Second):
+			t.Fatal("the ctx had to be cancelled before reaching this")
+		}
+
+		return nil
+	}
+
+	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {}
+
+	sub := Subscriber(
+		groupID,
+		*redisAddress,
+		StreamsForSubscriber(stream),
+		ConsumeTimeout(10*time.Millisecond),
+	)
+	go sub.Consume(ctx, handler, errHandler)
+	leaveTimeForTheSubscriberToStartRunning()
+
+	pub := Publisher(*redisAddress, []Stream{StreamForPublisher(stream, eventName)})
+	event := pubsub.NewEvent(context.Background(), pubsub.Name(eventName), nil)
+	_ = pub.Emit(context.Background(), event)
+
+	<-ctx.Done()
+}
+
 func leaveTimeForTheSubscriberToStartRunning() {
 	<-time.After(100 * time.Millisecond)
 }
