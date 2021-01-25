@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ var (
 	errHandler     = errors.New("handler error")
 )
 
-func TestConsumingWithACanceledContext(t *testing.T) {
+func TestConsumingWithACancelledContext(t *testing.T) {
 	var messageWasHandled bool
 	handler := func(_ context.Context, _ pubsub.Event) error {
 		messageWasHandled = true
@@ -33,18 +34,19 @@ func TestConsumingWithACanceledContext(t *testing.T) {
 	cancel()
 
 	sub := NewSubscriber()
-	defer sub.Close()
 	sub.Consume(ctx, handler, errHandler)
 
 	if messageWasHandled {
 		t.Fatal("no messages should have been handled")
 	}
-	if !errors.Is(obtainedError, errors.Context) {
-		t.Fatalf("a context error was expected, got %v", obtainedError)
+	if obtainedError != nil {
+		t.Fatalf("no errors were expected, got %v", obtainedError)
 	}
 	if memory.IsCompleted(o11y.GetSpan(ctx)) {
 		t.Fatal("no span should have been created, therefore completed")
 	}
+
+	sub.Close()
 }
 
 func TestAHandlerThatFails(t *testing.T) {
@@ -59,7 +61,6 @@ func TestAHandlerThatFails(t *testing.T) {
 
 	pub := NewPublisher()
 	sub := NewSubscriber()
-	defer sub.Close()
 
 	pubCtx, _ := o11y.StartSpan(context.Background(), "")
 	event1 := pubsub.NewEvent(pubCtx, knownEventName, nil)
@@ -80,6 +81,7 @@ func TestAHandlerThatFails(t *testing.T) {
 	}
 
 	subCtx, _ := o11y.StartSpan(context.Background(), "")
+	subCtx, _ = context.WithTimeout(subCtx, 50*time.Millisecond)
 	sub.Consume(subCtx, handler, errHandler)
 
 	if obtainedError == nil {
@@ -102,6 +104,8 @@ func TestAHandlerThatFails(t *testing.T) {
 	if got := pair.Int(); got != 1 {
 		t.Fatalf("invalid handling attempt, want 1, got %d", got)
 	}
+
+	sub.Close()
 }
 
 func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
@@ -122,12 +126,12 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 
 	pub := NewPublisher()
 	sub := NewSubscriber(WithMaxAttempts(maxAttempts))
-	defer sub.Close()
 
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
 
 	ctx, _ := o11y.StartSpan(context.Background(), "")
+	ctx, _ = context.WithTimeout(ctx, 50*time.Millisecond)
 	sub.Consume(ctx, handler, errHandler)
 
 	if got := len(obtainedErrors); got != maxAttempts {
@@ -171,12 +175,13 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 	if got := pair.Bool(); got != true {
 		t.Fatalf("invalid is_last_attempt, want %t, got %T", true, got)
 	}
+
+	sub.Close()
 }
 
 func TestASubscriberWithAFilledUpQueue(t *testing.T) {
 	pub := NewPublisher()
 	sub := NewSubscriber(WithQueueSize(1))
-	defer sub.Close()
 
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
@@ -187,15 +192,26 @@ func TestASubscriberWithAFilledUpQueue(t *testing.T) {
 		lastEventEmitted = true
 	}()
 
-	<-time.After(100 * time.Millisecond)
+	<-time.After(50 * time.Millisecond)
 	if lastEventEmitted {
 		t.Fatal("the second event shouldn't be emitted")
 	}
+
+	handler := func(_ context.Context, _ pubsub.Event) error { return nil }
+	errHandler := func(_ context.Context, _ error, _ *pubsub.Event) {}
+
+	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	sub.Consume(ctx, handler, errHandler)
+	sub.Close()
 }
 
 func TestUsingMultipleSubscribers(t *testing.T) {
+	var lock sync.Mutex
 	var handledEvents []pubsub.Event
 	handler := func(_ context.Context, e pubsub.Event) error {
+		lock.Lock()
+		defer lock.Unlock()
+
 		handledEvents = append(handledEvents, e)
 		return nil
 	}
@@ -211,11 +227,14 @@ func TestUsingMultipleSubscribers(t *testing.T) {
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
 
-	sub1.Consume(context.Background(), handler, errHandler)
-	sub2.Consume(context.Background(), handler, errHandler)
+	go sub1.Consume(context.Background(), handler, errHandler)
+	go sub2.Consume(context.Background(), handler, errHandler)
+	<-time.After(50 * time.Millisecond)
 
+	lock.Lock()
+	defer lock.Unlock()
 	if got := len(handledEvents); got != 2 {
-		t.Fatalf("the same event had to be handled twice, it's been handled %d", got)
+		t.Fatalf("the same event had to be handled twice, it's been handled %d times", got)
 	}
 
 	ev1 := handledEvents[0].ID

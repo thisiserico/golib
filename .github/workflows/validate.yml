@@ -1,0 +1,21 @@
+name: validate
+on: [push]
+
+jobs:
+  validations:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+
+    - name: run linter
+      uses: cedrickring/golang-action/go1.15@1.6.0
+      with:
+        args: make setup lint
+
+    - name: run unit tests
+      uses: cedrickring/golang-action/go1.15@1.6.0
+      with:
+        args: make test/unit
+
+    - name: run redis integration tests
+      run: make test/redis

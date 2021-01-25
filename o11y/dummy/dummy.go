@@ -1,3 +1,6 @@
+// Package dummy provides an agent implementation to use when no other agent
+// fits a certain use case. The spans are simply logged using the injected
+// logger.
 package dummy
 
 import (

@@ -1,8 +1,12 @@
+// Package memory provides an in-memory pubsub mechanism.
+// Its usage is recommended when operating a monolith, an actual pubsub engine
+// has not yet been chosen or when working on POCs and the like.
 package memory
 
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/thisiserico/golib/v2/errors"
@@ -11,9 +15,15 @@ import (
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
-var subscribers map[string]*subscriber
+var (
+	lock        sync.RWMutex
+	subscribers map[string]*subscriber
+)
 
 func init() {
+	lock.Lock()
+	defer lock.Unlock()
+
 	subscribers = make(map[string]*subscriber)
 }
 
@@ -57,6 +67,8 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		span.AddPair(ctx, kv.New(fmt.Sprintf("event_%d", i), ev.Name))
 	}
 
+	lock.RLock()
+	defer lock.RUnlock()
 	for _, sub := range subscribers {
 		sub.emitEvents(events...)
 	}
@@ -112,7 +124,10 @@ func NewSubscriber(opts ...SubscriberOption) pubsub.Subscriber {
 		opt(sub)
 	}
 
+	lock.Lock()
+	defer lock.Unlock()
 	subscribers[sub.id] = sub
+
 	return sub
 }
 
@@ -128,14 +143,25 @@ func (s *subscriber) emitEvents(events ...pubsub.Event) {
 	}
 }
 
-// Consume will handle the given event. The error handler will be used if the
-// event handler erroes. Retries will take place as indicated, passing along an
-// error only when there're still retries left, an error and the actual event
-// otherwise. The error will always contain the handling attempt as a tag.
+// Consume will consume events as they are available. The error handler will be
+// used if the event handler erroes. Retries will take place as indicated,
+// passing along an error only when there're still retries left, an error and
+// the actual event otherwise. The error will always contain the handling
+// attempt as a tag.
 func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorHandler pubsub.ErrorHandler) {
+	for {
+		if err := ctx.Err(); err != nil {
+			break
+		}
+
+		s.consumeEvent(ctx, handler, errorHandler)
+	}
+}
+
+func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, errorHandler pubsub.ErrorHandler) {
 	select {
 	case <-ctx.Done():
-		errorHandler(ctx, errors.New(ctx), nil)
+		return
 
 	case event := <-s.events:
 		ctx, span := o11y.StartSpan(ctx, "consumer")
@@ -171,6 +197,9 @@ func (s *subscriber) Consume(ctx context.Context, handler pubsub.Handler, errorH
 }
 
 func (s *subscriber) Close() error {
+	lock.Lock()
+	defer lock.Unlock()
+
 	close(s.events)
 	delete(subscribers, s.id)
 
