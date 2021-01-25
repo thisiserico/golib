@@ -265,31 +265,36 @@ func (s *subscriber) handleClaimedButNotProcessedEvents(
 	handler pubsub.Handler,
 	errHandler pubsub.ErrorHandler,
 ) {
-	// TODO run this asynchronously, using a s.consumeTimeout property as "idle-time".
+	idleTimeout := time.Duration(s.maxAttempts) * s.consumeTimeout
 
-	ctx, span := o11y.StartSpan(ctx, "redis potential failure recovery")
-	defer span.Complete()
+	go func() {
+		for ; ; <-time.After(time.Second) {
+			ctx, span := o11y.StartSpan(ctx, "redis potential failure recovery")
+			span.AddPair(ctx, kv.New("group_id", s.groupID))
 
-	span.AddPair(ctx, kv.New("group_id", s.groupID))
-	span.AddPair(ctx, kv.New("consumer_id", s.consumerID))
+			for i, stream := range s.streams {
+				span.AddPair(ctx, kv.New(fmt.Sprintf("stream_%d", i), stream))
 
-	for _, stream := range s.streams {
-		resp := s.client.Query(ctx, "xautoclaim", stream, s.groupID, s.consumerID, 0, "0-0", "count", s.readCapacity)
-		var nextStartID interface{}
-		_ = resp.Next(&nextStartID)
+				resp := s.client.Query(ctx, "xautoclaim", stream, s.groupID, s.consumerID, idleTimeout, "0-0", "count", s.readCapacity)
+				var nextStartID interface{}
+				_ = resp.Next(&nextStartID)
 
-		var entries []interface{}
-		_ = resp.Next(&entries)
+				var entries []interface{}
+				_ = resp.Next(&entries)
 
-		for _, redisEntry := range entries {
-			s.consumeSingleEntry(ctx, stream, redisEntry, handler, errHandler)
+				for _, redisEntry := range entries {
+					s.consumeSingleEntry(ctx, stream, redisEntry, handler, errHandler)
+				}
+				if err := resp.Close(); err != nil {
+					err = errors.New(ctx, "redis xautoclaim", err, errors.Permanent)
+					span.AddPair(ctx, kv.New("error", err))
+					errHandler(ctx, err, nil)
+				}
+			}
+
+			span.Complete()
 		}
-		if err := resp.Close(); err != nil {
-			err = errors.New(ctx, "redis xautoclaim", err, errors.Permanent)
-			span.AddPair(ctx, kv.New("error", err))
-			errHandler(ctx, err, nil)
-		}
-	}
+	}()
 }
 
 // consumeSingleEntry handles a single redis entry, acknowledging the entry at

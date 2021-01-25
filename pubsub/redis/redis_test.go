@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"sync"
 	"testing"
 	"time"
 
@@ -379,7 +380,11 @@ func TestConsumingMultipleEventsFromMultipleStreams(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var obtainedEvents []pubsub.Event
+	var lock sync.Mutex
 	handler := func(_ context.Context, event pubsub.Event) error {
+		lock.Lock()
+		defer lock.Unlock()
+
 		obtainedEvents = append(obtainedEvents, event)
 		if len(obtainedEvents) == readSize {
 			cancel()
@@ -500,7 +505,11 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var obtainedEvents []pubsub.Event
+	var lock sync.Mutex
 	handler := func(_ context.Context, event pubsub.Event) error {
+		lock.Lock()
+		defer lock.Unlock()
+
 		obtainedEvents = append(obtainedEvents, event)
 		if len(obtainedEvents) == expectedEvents {
 			cancel()
