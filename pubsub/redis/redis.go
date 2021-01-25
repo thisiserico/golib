@@ -160,14 +160,25 @@ func ConsumeTimeout(timeout time.Duration) SubscriberOption {
 	}
 }
 
+// RunFailureRecovery enables the execution of the redis xautoclaim command, running it on the
+// indicated cadence. By default, no recovery is run.
+func RunFailureRecovery(enabled bool, cadence time.Duration) SubscriberOption {
+	return func(sub *subscriber) {
+		sub.failureRecoveryEnabled = enabled
+		sub.failureRecoveryCadence = cadence
+	}
+}
+
 type subscriber struct {
-	client         *redis.Client
-	groupID        string
-	consumerID     string
-	streams        []string
-	maxAttempts    int
-	readCapacity   int
-	consumeTimeout time.Duration
+	client                 *redis.Client
+	groupID                string
+	consumerID             string
+	streams                []string
+	maxAttempts            int
+	readCapacity           int
+	consumeTimeout         time.Duration
+	failureRecoveryEnabled bool
+	failureRecoveryCadence time.Duration
 }
 
 // Subscriber creates a subscriber that uses redis streams under the hood.
@@ -190,12 +201,14 @@ func Subscriber(groupID, address string, streams []Stream, opts ...SubscriberOpt
 		client: &redis.Client{
 			Addr: address,
 		},
-		groupID:        groupID,
-		consumerID:     uuid.New().String(),
-		streams:        strs,
-		maxAttempts:    1,
-		readCapacity:   10,
-		consumeTimeout: time.Second,
+		groupID:                groupID,
+		consumerID:             uuid.New().String(),
+		streams:                strs,
+		maxAttempts:            1,
+		readCapacity:           10,
+		consumeTimeout:         time.Second,
+		failureRecoveryEnabled: false,
+		failureRecoveryCadence: time.Second,
 	}
 
 	for _, opt := range opts {
@@ -268,7 +281,7 @@ func (s *subscriber) handleClaimedButNotProcessedEvents(
 	idleTimeout := time.Duration(s.maxAttempts) * s.consumeTimeout
 
 	go func() {
-		for ; ; <-time.After(time.Second) {
+		for ; s.failureRecoveryEnabled; <-time.After(s.failureRecoveryCadence) {
 			ctx, span := o11y.StartSpan(ctx, "redis potential failure recovery")
 			span.AddPair(ctx, kv.New("group_id", s.groupID))
 

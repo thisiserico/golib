@@ -526,7 +526,12 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 		obtainedError = err
 	}
 
-	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
+	sub := Subscriber(
+		groupID,
+		*redisAddress,
+		StreamsForSubscriber(stream),
+		RunFailureRecovery(true, time.Second),
+	)
 	go sub.Consume(ctx, handler, errHandler)
 
 	// Yet another event is produced, this one while the subscriber is already consuming.
