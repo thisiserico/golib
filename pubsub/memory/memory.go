@@ -174,24 +174,27 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 			span.AddPair(ctx, kv.New("attempt", event.Meta.Attempts))
 			event.Meta.Attempts++
 
-			if err := handler(ctx, event); err != nil {
-				eventForErrorHandler := &event
-				if event.Meta.Attempts != s.maxAttempts {
-					eventForErrorHandler = nil
-				} else {
-					span.AddPair(ctx, kv.New("error", err))
-				}
-
-				errorHandler(
-					ctx,
-					errors.New(
-						err,
-						kv.New("attempt", event.Meta.Attempts),
-						kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
-					),
-					eventForErrorHandler,
-				)
+			err := handler(ctx, event)
+			if err == nil {
+				break
 			}
+
+			eventForErrorHandler := &event
+			if event.Meta.Attempts != s.maxAttempts {
+				eventForErrorHandler = nil
+			} else {
+				span.AddPair(ctx, kv.New("error", err))
+			}
+
+			errorHandler(
+				ctx,
+				errors.New(
+					err,
+					kv.New("attempt", event.Meta.Attempts),
+					kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
+				),
+				eventForErrorHandler,
+			)
 		}
 	}
 }

@@ -219,7 +219,7 @@ func TestUsingMultipleSubscribers(t *testing.T) {
 	errHandler := func(_ context.Context, _ error, _ *pubsub.Event) {}
 
 	pub := NewPublisher()
-	sub1 := NewSubscriber()
+	sub1 := NewSubscriber(WithMaxAttempts(2))
 	sub2 := NewSubscriber()
 	defer sub1.Close()
 	defer sub2.Close()

@@ -241,8 +241,10 @@ func TestConsumingOneEventFromOneStream(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var messageWasHandled bool
+	var handlingAttempts int
 	handler := func(_ context.Context, _ pubsub.Event) error {
 		messageWasHandled = true
+		handlingAttempts += 1
 		cancel()
 
 		return nil
@@ -253,7 +255,12 @@ func TestConsumingOneEventFromOneStream(t *testing.T) {
 		obtainedError = err
 	}
 
-	sub := Subscriber(groupID, *redisAddress, StreamsForSubscriber(stream))
+	sub := Subscriber(
+		groupID,
+		*redisAddress,
+		StreamsForSubscriber(stream),
+		HandlingNumberOfAttempts(2),
+	)
 	go sub.Consume(ctx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
 
@@ -267,6 +274,9 @@ func TestConsumingOneEventFromOneStream(t *testing.T) {
 	}
 	if obtainedError != nil {
 		t.Fatalf("no handling errors were expected, got %#v", obtainedError)
+	}
+	if want, got := 1, handlingAttempts; want != got {
+		t.Fatalf("%d more messages than expected have been handled", got-want)
 	}
 }
 
