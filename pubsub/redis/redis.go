@@ -153,9 +153,13 @@ func ReadingBatchCapacity(capacity int) SubscriberOption {
 }
 
 // ConsumeTimeout indicates the maximum amount of time for an event to be in a handling state.
-// Defaults to 1s.
+// Defaults to 1s, which is the minimum value.
 func ConsumeTimeout(timeout time.Duration) SubscriberOption {
 	return func(sub *subscriber) {
+		if timeout.Seconds() < 1 {
+			timeout = time.Second
+		}
+
 		sub.consumeTimeout = timeout
 	}
 }
@@ -341,24 +345,27 @@ func (s *subscriber) consumeSingleEntry(
 		span.AddPair(ctx, kv.New("attempt", event.Meta.Attempts))
 		event.Meta.Attempts++
 
-		if err := handler(ctx, event); err != nil {
-			eventForErrorHandler := &event
-			if event.Meta.Attempts != s.maxAttempts {
-				eventForErrorHandler = nil
-			} else {
-				span.AddPair(ctx, kv.New("error", err))
-			}
-
-			errHandler(
-				ctx,
-				errors.New(
-					err,
-					kv.New("attempt", event.Meta.Attempts),
-					kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
-				),
-				eventForErrorHandler,
-			)
+		err := handler(ctx, event)
+		if err == nil {
+			break
 		}
+
+		eventForErrorHandler := &event
+		if event.Meta.Attempts != s.maxAttempts {
+			eventForErrorHandler = nil
+		} else {
+			span.AddPair(ctx, kv.New("error", err))
+		}
+
+		errHandler(
+			ctx,
+			errors.New(
+				err,
+				kv.New("attempt", event.Meta.Attempts),
+				kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
+			),
+			eventForErrorHandler,
+		)
 	}
 
 	_ = s.client.Exec(context.Background(), "xack", streamID, s.groupID, entryID)
