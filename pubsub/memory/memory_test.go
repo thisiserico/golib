@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/thisiserico/golib/v2/errors"
-	"github.com/thisiserico/golib/v2/o11y"
-	"github.com/thisiserico/golib/v2/o11y/memory"
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
@@ -29,8 +27,7 @@ func TestConsumingWithACancelledContext(t *testing.T) {
 		obtainedError = err
 	}
 
-	ctx, _ := o11y.StartSpan(context.Background(), "")
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	sub := NewSubscriber()
@@ -41,9 +38,6 @@ func TestConsumingWithACancelledContext(t *testing.T) {
 	}
 	if obtainedError != nil {
 		t.Fatalf("no errors were expected, got %v", obtainedError)
-	}
-	if memory.IsCompleted(o11y.GetSpan(ctx)) {
-		t.Fatal("no span should have been created, therefore completed")
 	}
 
 	sub.Close()
@@ -62,39 +56,15 @@ func TestAHandlerThatFails(t *testing.T) {
 	pub := NewPublisher()
 	sub := NewSubscriber()
 
-	pubCtx, _ := o11y.StartSpan(context.Background(), "")
-	event1 := pubsub.NewEvent(pubCtx, knownEventName, nil)
-	event2 := pubsub.NewEvent(pubCtx, knownEventName, nil)
-	_ = pub.Emit(pubCtx, event1, event2)
+	event1 := pubsub.NewEvent(context.Background(), knownEventName, nil)
+	event2 := pubsub.NewEvent(context.Background(), knownEventName, nil)
+	_ = pub.Emit(context.Background(), event1, event2)
 
-	if !memory.IsCompleted(o11y.GetSpan(pubCtx)) {
-		t.Fatal("the publisher span should have been completed")
-	}
-	if memory.HasErroed(o11y.GetSpan(pubCtx)) {
-		t.Fatal("no errors were expected after publishing the event")
-	}
-	if !memory.PairMatches(o11y.GetSpan(pubCtx), "event_0", knownEventName) {
-		t.Fatal("the event_0 attribute should be reported")
-	}
-	if !memory.PairMatches(o11y.GetSpan(pubCtx), "event_1", knownEventName) {
-		t.Fatal("the event_1 attribute should be reported")
-	}
-
-	subCtx, _ := o11y.StartSpan(context.Background(), "")
-	subCtx, _ = context.WithTimeout(subCtx, 50*time.Millisecond)
+	subCtx, _ := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	sub.Consume(subCtx, handler, errHandler)
 
 	if obtainedError == nil {
 		t.Fatal("an error had to be handled")
-	}
-	if !memory.IsCompleted(o11y.GetSpan(subCtx)) {
-		t.Fatal("the publisher span should have been completed")
-	}
-	if !memory.HasErroed(o11y.GetSpan(subCtx)) {
-		t.Fatal("an error was expected after consuming an event")
-	}
-	if !memory.PairMatches(o11y.GetSpan(subCtx), "attempt", 0) {
-		t.Fatal("the number of attemps were not reported correctly")
 	}
 
 	pair, exists := errors.Tag("attempt", obtainedError)
@@ -130,16 +100,11 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 	event := pubsub.NewEvent(context.Background(), knownEventName, nil)
 	_ = pub.Emit(context.Background(), event)
 
-	ctx, _ := o11y.StartSpan(context.Background(), "")
-	ctx, _ = context.WithTimeout(ctx, 50*time.Millisecond)
+	ctx, _ := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	sub.Consume(ctx, handler, errHandler)
 
 	if got := len(obtainedErrors); got != maxAttempts {
 		t.Fatalf("as many errors as handling attempts are expected, want %d, got %d", maxAttempts, got)
-	}
-
-	if !memory.PairMatches(o11y.GetSpan(ctx), "attempt", 1) {
-		t.Fatal("the number of attemps were not reported correctly")
 	}
 
 	if got := obtainedEvents[0]; got != nil {

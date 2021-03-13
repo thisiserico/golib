@@ -24,7 +24,7 @@ The [`kv`][kv] package lets you define key-value pairs to be used in multiple si
 
 The [`logger`][logger] package lets you log as you'd normally do, only a simplified contract is used.
 
-The [`o11y`][o11y] package provides an abstraction to make a program observable.
+The [`o11y`][o11y] package contains functionality that [`opentelemetry`][opentelemetry] uses to ingest telemetry data.
 
 The [`pubsub`][pubsub] package lets you publish and subscribe to messages.
 
@@ -35,6 +35,7 @@ Existing packages are subject to change.
 Different concrete implementations or packages will be added when needed.
 
 
+[opentelemetry]: https://pkg.go.dev/go.opentelemetry.io
 [cntxt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/cntxt
 [errors]: https://pkg.go.dev/github.com/thisiserico/golib/v2/errors
 [halt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/halt
