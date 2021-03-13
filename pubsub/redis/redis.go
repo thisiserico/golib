@@ -97,14 +97,14 @@ func Publisher(address string, streams []Stream) pubsub.Publisher {
 		},
 		streamForEvent:   streamForEvents,
 		streamCapacities: streamCapacities,
-		tracer:           otel.Tracer("pubsub/redis"),
+		tracer:           otel.Tracer("pubsub/redis.publisher"),
 	}
 }
 
 func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 	ctx, span := p.tracer.Start(
 		ctx,
-		"redis publisher",
+		"emit",
 		trace.WithSpanKind(trace.SpanKindProducer),
 	)
 	defer span.End()
@@ -120,7 +120,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 				errors.Permanent,
 			)
 			span.RecordError(err)
-			span.SetStatus(codes.Error, "unknown redis stream for event")
+			span.SetStatus(codes.Error, err.Error())
 
 			return err
 		}
@@ -132,7 +132,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		if err != nil {
 			err = errors.New(ctx, "redis xadd", err, errors.Permanent)
 			span.RecordError(err)
-			span.SetStatus(codes.Error, "unknown redis stream for event")
+			span.SetStatus(codes.Error, err.Error())
 
 			return err
 		}
@@ -226,7 +226,7 @@ func Subscriber(groupID, address string, streams []Stream, opts ...SubscriberOpt
 		consumeTimeout:         time.Second,
 		failureRecoveryEnabled: false,
 		failureRecoveryCadence: time.Second,
-		tracer:                 otel.Tracer("pubsub/redis"),
+		tracer:                 otel.Tracer("pubsub/redis.subscriber"),
 	}
 
 	for _, opt := range opts {
@@ -282,7 +282,7 @@ func (s *subscriber) Consume(
 func (s *subscriber) createConsumerGroupForEachStream(ctx context.Context) {
 	ctx, span := s.tracer.Start(
 		ctx,
-		"redis consumer group set up",
+		"consumer group set up",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
 			attribute.String("group_id", s.groupID),
@@ -308,7 +308,7 @@ func (s *subscriber) handleClaimedButNotProcessedEvents(
 		for ; s.failureRecoveryEnabled; <-time.After(s.failureRecoveryCadence) {
 			ctx, span := s.tracer.Start(
 				ctx,
-				"redis potential failure recovery",
+				"potential failure recovery",
 				trace.WithSpanKind(trace.SpanKindConsumer),
 				trace.WithAttributes(
 					attribute.String("group_id", s.groupID),
@@ -331,7 +331,7 @@ func (s *subscriber) handleClaimedButNotProcessedEvents(
 				if err := resp.Close(); err != nil {
 					err = errors.New(ctx, "redis xautoclaim", err, errors.Permanent)
 					span.RecordError(err)
-					span.SetStatus(codes.Error, "redis xautoclaim")
+					span.SetStatus(codes.Error, err.Error())
 
 					errHandler(ctx, err, nil)
 				}
@@ -354,7 +354,7 @@ func (s *subscriber) consumeSingleEntry(
 ) {
 	ctx, span := s.tracer.Start(
 		ctx,
-		"redis subscriber",
+		"consume",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
 			attribute.String("group_id", s.groupID),
@@ -388,7 +388,7 @@ func (s *subscriber) consumeSingleEntry(
 		if event.Meta.Attempts != s.maxAttempts {
 			eventForErrorHandler = nil
 		} else {
-			span.SetStatus(codes.Error, "max attempts reached")
+			span.SetStatus(codes.Error, err.Error())
 		}
 
 		errHandler(

@@ -9,7 +9,7 @@ help: ## prints this help
 
 .PHONY: setup
 setup: ## downloads dependencies
-	GO111MODULE=off go get github.com/mgechev/revive
+	go install github.com/mgechev/revive
 
 
 .PHONY: generate

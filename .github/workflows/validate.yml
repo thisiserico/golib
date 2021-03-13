@@ -8,14 +8,12 @@ jobs:
     - uses: actions/checkout@master
 
     - name: run linter
-      uses: cedrickring/golang-action/go1.15@1.6.0
+      uses: cedrickring/golang-action/go1.16@1.7.0
       with:
         args: make setup lint
 
     - name: run unit tests
-      uses: cedrickring/golang-action/go1.15@1.6.0
-      with:
-        args: make test/unit
+      run: make test/unit
 
     - name: run redis integration tests
       run: make test/redis

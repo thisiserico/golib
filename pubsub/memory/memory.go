@@ -50,7 +50,7 @@ func WithPublisherID(id string) PublisherOption {
 func NewPublisher(opts ...PublisherOption) pubsub.Publisher {
 	pub := &publisher{
 		id:     uuid.New().String(),
-		tracer: otel.Tracer("pubsub/memory"),
+		tracer: otel.Tracer("pubsub/memory.publisher"),
 	}
 
 	for _, opt := range opts {
@@ -65,7 +65,7 @@ func NewPublisher(opts ...PublisherOption) pubsub.Publisher {
 func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 	ctx, span := p.tracer.Start(
 		ctx,
-		"publisher",
+		"emit",
 		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(attribute.String("publisher", p.id)),
 	)
@@ -127,7 +127,7 @@ func NewSubscriber(opts ...SubscriberOption) pubsub.Subscriber {
 		id:          uuid.New().String(),
 		maxAttempts: 1,
 		events:      make(chan pubsub.Event, 10),
-		tracer:      otel.Tracer("pubsub/memory"),
+		tracer:      otel.Tracer("pubsub/memory.subscriber"),
 	}
 
 	for _, opt := range opts {
@@ -176,7 +176,7 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 	case event := <-s.events:
 		ctx, span := s.tracer.Start(
 			ctx,
-			"consumer",
+			"consume",
 			trace.WithSpanKind(trace.SpanKindConsumer),
 			trace.WithAttributes(
 				attribute.String("subscriber", s.id),
