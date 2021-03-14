@@ -1,6 +1,7 @@
 // Package kv provides a way to work with keys and values.
 // Those let keep the consistency among packages when working with
-// key-value pairs.
+// key-value pairs. Functionality for some pre-defined context attributes
+// is also provided.
 package kv
 
 const redactedValue = "redacted"
@@ -45,7 +46,7 @@ func (p Pair) Name() string {
 	return p.key
 }
 
-// Value returns the value of the Pair.
+// Value returns a new value to be used outside any Pair.
 func Value(v interface{}) Val {
 	return Val{raw: v}
 }
@@ -60,8 +61,8 @@ func (v Val) Value() interface{} {
 	return v.raw
 }
 
-// String returns the raw string value. If the value is obfuscated, a redacted
-// value is provided instead.
+// String returns the raw string value, or empty string if one doesn't exist.
+// If the value is obfuscated, a redacted value is provided instead.
 func (v Val) String() string {
 	if v.isObfuscated {
 		return redactedValue
@@ -75,7 +76,7 @@ func (v Val) String() string {
 	return s
 }
 
-// Int returns the raw integer value.
+// Int returns the raw integer value, or 0 if one doesn't exist.
 func (v Val) Int() int {
 	i, ok := v.raw.(int)
 	if ok {
@@ -90,7 +91,7 @@ func (v Val) Int() int {
 	return 0
 }
 
-// Bool returns the raw boolean value.
+// Bool returns the raw boolean value, or false if one doesn't exist.
 func (v Val) Bool() bool {
 	b, ok := v.raw.(bool)
 	if !ok {

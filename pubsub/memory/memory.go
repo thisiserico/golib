@@ -13,6 +13,10 @@ import (
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/o11y"
 	"github.com/thisiserico/golib/v2/pubsub"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -28,7 +32,8 @@ func init() {
 }
 
 type publisher struct {
-	id string
+	id     string
+	tracer trace.Tracer
 }
 
 // PublisherOption allows to tweak publisher behavior while hidding the
@@ -45,7 +50,8 @@ func WithPublisherID(id string) PublisherOption {
 // NewPublisher creates a new in memory publisher implementation.
 func NewPublisher(opts ...PublisherOption) pubsub.Publisher {
 	pub := &publisher{
-		id: uuid.New().String(),
+		id:     uuid.New().String(),
+		tracer: otel.Tracer("pubsub/memory.publisher"),
 	}
 
 	for _, opt := range opts {
@@ -58,13 +64,17 @@ func NewPublisher(opts ...PublisherOption) pubsub.Publisher {
 // Emit will publish the provided events to all the existing subscribers.
 // This is a blocking operation, no errors will be produced.
 func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
-	ctx, span := o11y.StartSpan(ctx, "emitter")
-	defer span.Complete()
+	ctx, span := p.tracer.Start(
+		ctx,
+		"emit",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(attribute.String("pubsub.publisher_id", p.id)),
+		trace.WithAttributes(o11y.Attributes(ctx)...),
+	)
+	defer span.End()
 
-	span.AddPair(ctx, kv.New("id", p.id))
-
-	for i, ev := range events {
-		span.AddPair(ctx, kv.New(fmt.Sprintf("event_%d", i), ev.Name))
+	for _, ev := range events {
+		span.AddEvent(string(ev.Name))
 	}
 
 	lock.RLock()
@@ -82,6 +92,7 @@ type subscriber struct {
 	id          string
 	maxAttempts int
 	events      chan pubsub.Event
+	tracer      trace.Tracer
 }
 
 // SubscriberOption allows to tweak subscriber behavior while hidding the
@@ -118,6 +129,7 @@ func NewSubscriber(opts ...SubscriberOption) pubsub.Subscriber {
 		id:          uuid.New().String(),
 		maxAttempts: 1,
 		events:      make(chan pubsub.Event, 10),
+		tracer:      otel.Tracer("pubsub/memory.subscriber"),
 	}
 
 	for _, opt := range opts {
@@ -164,34 +176,42 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 		return
 
 	case event := <-s.events:
-		ctx, span := o11y.StartSpan(ctx, "consumer")
-		defer span.Complete()
-
-		span.AddPair(ctx, kv.New("id", s.id))
-		span.AddPair(ctx, kv.New("event_name", event.Name))
+		ctx := kv.SetDynamicAttributes(ctx, event.Meta.CorrelationID, event.Meta.IsDryRun)
+		ctx, span := s.tracer.Start(
+			ctx,
+			"consume",
+			trace.WithSpanKind(trace.SpanKindConsumer),
+			trace.WithAttributes(
+				attribute.String("pubsub.subscriber_id", s.id),
+				attribute.String("pubsub.event_name", string(event.Name)),
+			),
+			trace.WithAttributes(o11y.Attributes(ctx)...),
+		)
+		defer span.End()
 
 		for event.Meta.Attempts < s.maxAttempts {
-			span.AddPair(ctx, kv.New("attempt", event.Meta.Attempts))
+			span.AddEvent(fmt.Sprintf("attempt %d", event.Meta.Attempts))
 			event.Meta.Attempts++
 
 			err := handler(ctx, event)
 			if err == nil {
 				break
 			}
+			span.RecordError(err)
 
 			eventForErrorHandler := &event
 			if event.Meta.Attempts != s.maxAttempts {
 				eventForErrorHandler = nil
 			} else {
-				span.AddPair(ctx, kv.New("error", err))
+				span.SetStatus(codes.Error, "max attempts reached")
 			}
 
 			errorHandler(
 				ctx,
 				errors.New(
 					err,
-					kv.New("attempt", event.Meta.Attempts),
-					kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
+					kv.New("pubsub.attempt", event.Meta.Attempts),
+					kv.New("pubsub.is_last_attempt", event.Meta.Attempts == s.maxAttempts),
 				),
 				eventForErrorHandler,
 			)

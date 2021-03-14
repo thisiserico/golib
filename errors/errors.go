@@ -73,6 +73,9 @@ func New(args ...interface{}) error {
 			if err := t.Err(); err != nil {
 				categories = append(categories, Context)
 			}
+			for _, attr := range kv.AllAttributes(t) {
+				tags = append(tags, kv.New(attr.Name(), attr.Value))
+			}
 
 		case string:
 			msgs = append(msgs, t)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/thisiserico/golib/v2/cntxt"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/logger/memory"
@@ -16,16 +15,12 @@ func TestLoggingExecutionAttributes(t *testing.T) {
 		serviceHost   = "service_host"
 		serviceName   = "service_name"
 		correlationID = "correlation_id"
-		triggeredBy   = "triggered_by"
 		isDryRun      = true
 	)
 
-	ctx := cntxt.RunningBuildID(context.Background(), buildID)
-	ctx = cntxt.RunningOnHost(ctx, serviceHost)
-	ctx = cntxt.RunningService(ctx, serviceName)
-	ctx = cntxt.UsingCorrelationID(ctx, correlationID)
-	ctx = cntxt.ExecutionTriggeredBy(ctx, triggeredBy)
-	ctx = cntxt.ExecutionIsDryRun(ctx, isDryRun)
+	ctx := context.Background()
+	ctx = kv.SetStaticAttributes(ctx, buildID, serviceHost, serviceName)
+	ctx = kv.SetDynamicAttributes(ctx, correlationID, isDryRun)
 
 	writer := memory.New()
 	log := New(writer, JSONOutput)
@@ -36,22 +31,19 @@ func TestLoggingExecutionAttributes(t *testing.T) {
 		t.Fatal("no log line was produced")
 	}
 
-	if got := line.Fields["build_id"]; got != buildID {
+	if got := line.Fields["svc.build_id"]; got != buildID {
 		t.Fatalf("unexpected build ID, got %s, want %s", got, buildID)
 	}
-	if got := line.Fields["service_host"]; got != serviceHost {
+	if got := line.Fields["svc.host"]; got != serviceHost {
 		t.Fatalf("unexpected service host, got %s, want %s", got, serviceHost)
 	}
-	if got := line.Fields["service_name"]; got != serviceName {
+	if got := line.Fields["svc.name"]; got != serviceName {
 		t.Fatalf("unexpected service name, got %s, want %s", got, serviceName)
 	}
-	if got := line.Fields["correlation_id"]; got != correlationID {
+	if got := line.Fields["ctx.correlation_id"]; got != correlationID {
 		t.Fatalf("unexpected correlation ID, got %s, want %s", got, correlationID)
 	}
-	if got := line.Fields["triggered_by"]; got != triggeredBy {
-		t.Fatalf("unexpected triggered by, got %s, want %s", got, triggeredBy)
-	}
-	if got := line.Fields["is_dry_run"]; got != true {
+	if got := line.Fields["ctx.is_dry_run"]; got != true {
 		t.Fatalf("unexpected dry run indicator, got %t", got)
 	}
 }

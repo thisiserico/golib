@@ -9,7 +9,8 @@ help: ## prints this help
 
 .PHONY: setup
 setup: ## downloads dependencies
-	GO111MODULE=off go get golang.org/x/lint/golint
+	go mod download
+	go get -u github.com/mgechev/revive
 
 
 .PHONY: generate
@@ -18,7 +19,7 @@ generate: ## generates code
 
 .PHONY: lint
 lint: ## runs the code linter
-	go list ./... | xargs golint -set_exit_status
+	revive -formatter stylish -config revive.toml ./...
 
 .PHONY: test/unit
 test/unit: ## runs unit tests

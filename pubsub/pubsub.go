@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/thisiserico/golib/v2/cntxt"
+	"github.com/thisiserico/golib/v2/kv"
 )
 
 // ID indicates the event identifier.
@@ -53,8 +53,8 @@ func NewEvent(ctx context.Context, name Name, msg []byte) Event {
 		Name: name,
 		Meta: Meta{
 			CreatedAtUTC:  time.Now().UTC(),
-			CorrelationID: cntxt.CorrelationID(ctx).String(),
-			IsDryRun:      cntxt.IsDryRun(ctx).Bool(),
+			CorrelationID: kv.CorrelationID(ctx).String(),
+			IsDryRun:      kv.IsDryRun(ctx).Bool(),
 		},
 		Payload: msg,
 	}

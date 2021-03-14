@@ -14,8 +14,6 @@ which expose a simpler interface from what we're used to.
 
 ## 👩‍💻 Provided modules
 
-The [`cntxt`][cntxt] package lets you interact with known attributes that are required to keep in a context.
-
 The [`errors`][errors] package lets you create contextual errors using a simplified contract.
 
 The [`halt`][halt] package lets you handle graceful shutdowns.
@@ -24,7 +22,7 @@ The [`kv`][kv] package lets you define key-value pairs to be used in multiple si
 
 The [`logger`][logger] package lets you log as you'd normally do, only a simplified contract is used.
 
-The [`o11y`][o11y] package provides an abstraction to make a program observable.
+The [`o11y`][o11y] package contains functionality that [`opentelemetry`][opentelemetry] uses to ingest telemetry data.
 
 The [`pubsub`][pubsub] package lets you publish and subscribe to messages.
 
@@ -35,7 +33,7 @@ Existing packages are subject to change.
 Different concrete implementations or packages will be added when needed.
 
 
-[cntxt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/cntxt
+[opentelemetry]: https://pkg.go.dev/go.opentelemetry.io
 [errors]: https://pkg.go.dev/github.com/thisiserico/golib/v2/errors
 [halt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/halt
 [kv]: https://pkg.go.dev/github.com/thisiserico/golib/v2/kv
