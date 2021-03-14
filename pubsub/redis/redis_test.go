@@ -550,7 +550,7 @@ func TestThatASingleHandlingCanTimeout(t *testing.T) {
 		select {
 		case <-ctx.Done():
 
-		case <-time.After(time.Second):
+		case <-time.After(2 * time.Second):
 			t.Fatal("the ctx had to be cancelled before reaching this")
 		}
 
@@ -563,7 +563,7 @@ func TestThatASingleHandlingCanTimeout(t *testing.T) {
 		groupID,
 		*redisAddress,
 		StreamsForSubscriber(stream),
-		ConsumeTimeout(10*time.Millisecond),
+		ConsumeTimeout(time.Second),
 	)
 	go sub.Consume(ctx, handler, errHandler)
 	leaveTimeForTheSubscriberToStartRunning()
