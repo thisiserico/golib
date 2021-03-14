@@ -31,7 +31,7 @@ func newSpanProcessor(log logger.Log) *spanProcessor {
 	}
 }
 
-func (s *spanProcessor) OnStart(ctx context.Context, span trace.ReadWriteSpan) {
+func (s *spanProcessor) OnStart(_ context.Context, span trace.ReadWriteSpan) {
 	if s.shuttedDown {
 		return
 	}
@@ -40,12 +40,6 @@ func (s *spanProcessor) OnStart(ctx context.Context, span trace.ReadWriteSpan) {
 	if _, exists := s.spans[traceID]; !exists {
 		s.spans[traceID] = make(map[tracelib.SpanID]trace.ReadOnlySpan)
 	}
-
-	var attrs []attribute.KeyValue
-	for _, attr := range kv.AllAttributes(ctx) {
-		attrs = append(attrs, attribute.Any(attr.Name(), attr.Value()))
-	}
-	span.SetAttributes(attrs...)
 }
 
 func (s *spanProcessor) OnEnd(span trace.ReadOnlySpan) {
@@ -188,7 +182,7 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 	appendEvents := func(evs []tracelib.Event) {
 		events := make([]string, 0, len(evs))
 		for _, ev := range evs {
-			elapsed := ev.Time.Sub(traceStart)
+			elapsed := ev.Time.Sub(node.StartTime())
 			events = append(events, fmt.Sprintf("@%s %s", elapsed, ev.Name))
 			appendAttributes(ev.Attributes)
 		}

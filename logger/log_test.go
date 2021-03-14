@@ -31,19 +31,19 @@ func TestLoggingExecutionAttributes(t *testing.T) {
 		t.Fatal("no log line was produced")
 	}
 
-	if got := line.Fields["build_id"]; got != buildID {
+	if got := line.Fields["svc.build_id"]; got != buildID {
 		t.Fatalf("unexpected build ID, got %s, want %s", got, buildID)
 	}
-	if got := line.Fields["service_host"]; got != serviceHost {
+	if got := line.Fields["svc.host"]; got != serviceHost {
 		t.Fatalf("unexpected service host, got %s, want %s", got, serviceHost)
 	}
-	if got := line.Fields["service_name"]; got != serviceName {
+	if got := line.Fields["svc.name"]; got != serviceName {
 		t.Fatalf("unexpected service name, got %s, want %s", got, serviceName)
 	}
-	if got := line.Fields["correlation_id"]; got != correlationID {
+	if got := line.Fields["ctx.correlation_id"]; got != correlationID {
 		t.Fatalf("unexpected correlation ID, got %s, want %s", got, correlationID)
 	}
-	if got := line.Fields["is_dry_run"]; got != true {
+	if got := line.Fields["ctx.is_dry_run"]; got != true {
 		t.Fatalf("unexpected dry run indicator, got %t", got)
 	}
 }

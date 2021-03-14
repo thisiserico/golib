@@ -13,6 +13,7 @@ import (
 	"github.com/segmentio/redis-go"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/v2/o11y"
 	"github.com/thisiserico/golib/v2/pubsub"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -106,6 +107,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		ctx,
 		"emit",
 		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(o11y.Attributes(ctx)...),
 	)
 	defer span.End()
 
@@ -285,9 +287,10 @@ func (s *subscriber) createConsumerGroupForEachStream(ctx context.Context) {
 		"consumer group set up",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
-			attribute.String("group_id", s.groupID),
-			attribute.String("consumer_id", s.consumerID),
+			attribute.String("pubsub.group_id", s.groupID),
+			attribute.String("pubsub.consumer_id", s.consumerID),
 		),
+		trace.WithAttributes(o11y.Attributes(ctx)...),
 	)
 	defer span.End()
 
@@ -310,9 +313,8 @@ func (s *subscriber) handleClaimedButNotProcessedEvents(
 				ctx,
 				"potential failure recovery",
 				trace.WithSpanKind(trace.SpanKindConsumer),
-				trace.WithAttributes(
-					attribute.String("group_id", s.groupID),
-				),
+				trace.WithAttributes(attribute.String("pubsub.group_id", s.groupID)),
+				trace.WithAttributes(o11y.Attributes(ctx)...),
 			)
 
 			for _, stream := range s.streams {
@@ -357,9 +359,10 @@ func (s *subscriber) consumeSingleEntry(
 		"consume",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
-			attribute.String("group_id", s.groupID),
-			attribute.String("consumer_id", s.consumerID),
+			attribute.String("pubsub.group_id", s.groupID),
+			attribute.String("pubsub.consumer_id", s.consumerID),
 		),
+		trace.WithAttributes(o11y.Attributes(ctx)...),
 	)
 	defer span.End()
 
@@ -374,8 +377,8 @@ func (s *subscriber) consumeSingleEntry(
 
 	ctx = kv.SetDynamicAttributes(ctx, event.Meta.CorrelationID, event.Meta.IsDryRun)
 	span.SetAttributes(
-		attribute.String("correlation_id", event.Meta.CorrelationID),
-		attribute.Bool("is_dry_run", event.Meta.IsDryRun),
+		attribute.String("pubsub.correlation_id", event.Meta.CorrelationID),
+		attribute.Bool("pubsub.is_dry_run", event.Meta.IsDryRun),
 	)
 	span.AddEvent(string(event.Name))
 
@@ -400,8 +403,8 @@ func (s *subscriber) consumeSingleEntry(
 			ctx,
 			errors.New(
 				err,
-				kv.New("attempt", event.Meta.Attempts),
-				kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
+				kv.New("pubsub.attempt", event.Meta.Attempts),
+				kv.New("pubsub.is_last_attempt", event.Meta.Attempts == s.maxAttempts),
 			),
 			eventForErrorHandler,
 		)

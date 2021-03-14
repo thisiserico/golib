@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/v2/o11y"
 	"github.com/thisiserico/golib/v2/pubsub"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -67,7 +68,8 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		ctx,
 		"emit",
 		trace.WithSpanKind(trace.SpanKindProducer),
-		trace.WithAttributes(attribute.String("publisher", p.id)),
+		trace.WithAttributes(attribute.String("pubsub.publisher_id", p.id)),
+		trace.WithAttributes(o11y.Attributes(ctx)...),
 	)
 	defer span.End()
 
@@ -180,9 +182,10 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 			"consume",
 			trace.WithSpanKind(trace.SpanKindConsumer),
 			trace.WithAttributes(
-				attribute.String("subscriber", s.id),
-				attribute.String("event.name", string(event.Name)),
+				attribute.String("pubsub.subscriber_id", s.id),
+				attribute.String("pubsub.event_name", string(event.Name)),
 			),
+			trace.WithAttributes(o11y.Attributes(ctx)...),
 		)
 		defer span.End()
 
@@ -207,8 +210,8 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 				ctx,
 				errors.New(
 					err,
-					kv.New("attempt", event.Meta.Attempts),
-					kv.New("is_last_attempt", event.Meta.Attempts == s.maxAttempts),
+					kv.New("pubsub.attempt", event.Meta.Attempts),
+					kv.New("pubsub.is_last_attempt", event.Meta.Attempts == s.maxAttempts),
 				),
 				eventForErrorHandler,
 			)

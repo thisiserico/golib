@@ -67,7 +67,7 @@ func TestAHandlerThatFails(t *testing.T) {
 		t.Fatal("an error had to be handled")
 	}
 
-	pair, exists := errors.Tag("attempt", obtainedError)
+	pair, exists := errors.Tag("pubsub.attempt", obtainedError)
 	if !exists {
 		t.Fatal("the handling attempt had to be present in the error")
 	}
@@ -117,7 +117,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatal("the reported event doesn't match the expected one")
 	}
 
-	pair, exists := errors.Tag("is_last_attempt", obtainedErrors[0])
+	pair, exists := errors.Tag("pubsub.is_last_attempt", obtainedErrors[0])
 	if !exists {
 		t.Fatal("the is_last_attempt indicator had to be present in the error")
 	}
@@ -125,7 +125,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatalf("invalid is_last_attempt, want %t, got %T", false, got)
 	}
 
-	pair, exists = errors.Tag("attempt", obtainedErrors[1])
+	pair, exists = errors.Tag("pubsub.attempt", obtainedErrors[1])
 	if !exists {
 		t.Fatal("the handling attempt had to be present in the error")
 	}
@@ -133,7 +133,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatalf("invalid handling attempt, want %d, got %d", maxAttempts, got)
 	}
 
-	pair, exists = errors.Tag("is_last_attempt", obtainedErrors[1])
+	pair, exists = errors.Tag("pubsub.is_last_attempt", obtainedErrors[1])
 	if !exists {
 		t.Fatal("the is_last_attempt indicator had to be present in the error")
 	}

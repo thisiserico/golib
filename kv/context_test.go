@@ -26,24 +26,24 @@ func TestContextPairs(t *testing.T) {
 			var got interface{}
 
 			switch attr.Name() {
-			case "build_id":
+			case "svc.build_id":
 				want = buildID
 				got = attr.String()
-			case "service_host":
+			case "svc.host":
 				want = serviceHost
 				got = attr.String()
-			case "service_name":
+			case "svc.name":
 				want = serviceName
 				got = attr.String()
-			case "correlation_id":
+			case "ctx.correlation_id":
 				want = correlationID
 				got = attr.String()
-			case "is_dry_run":
+			case "ctx.is_dry_run":
 				want = isDryRun
 				got = attr.Bool()
 			}
 
-			if want != got {
+			if want == nil || want != got {
 				t.Fatalf("unexpected attribute, want %s, got %s", want, got)
 			}
 		}
@@ -51,33 +51,39 @@ func TestContextPairs(t *testing.T) {
 
 	t.Run("decorating context", func(t *testing.T) {
 		var (
-			buildID     = uuid.New().String()
-			serviceHost = uuid.New().String()
-			serviceName = uuid.New().String()
+			buildID       = uuid.New().String()
+			serviceHost   = uuid.New().String()
+			serviceName   = uuid.New().String()
+			correlationID = uuid.New().String()
+			isDryRun      = true
 		)
 
 		ctx := context.Background()
-		ctx = SetStaticAttributes(ctx, buildID, serviceHost, serviceName)
-		ctx = DecorateWithAttributes(context.Background(), ctx)
+		staticCtx := SetStaticAttributes(ctx, buildID, serviceHost, serviceName)
+		dynamicCtx := SetDynamicAttributes(ctx, correlationID, isDryRun)
+		ctx = DecorateWithAttributes(dynamicCtx, staticCtx)
 
 		for _, attr := range AllAttributes(ctx) {
 			var want interface{}
 			var got interface{}
 
 			switch attr.Name() {
-			case "build_id":
+			case "svc.build_id":
 				want = buildID
 				got = attr.String()
-			case "service_host":
+			case "svc.host":
 				want = serviceHost
 				got = attr.String()
-			case "service_name":
+			case "svc.name":
 				want = serviceName
 				got = attr.String()
+
+			case "ctx.correlation_id", "ctx.is_dry_run":
+				continue
 			}
 
-			if want != got {
-				t.Fatalf("unexpected attribute, want %s, got %s", want, got)
+			if want == nil || want != got {
+				t.Fatalf("unexpected attribute %s, want %s, got %s", attr.Name(), want, got)
 			}
 		}
 	})

@@ -3,12 +3,12 @@ package kv
 import "context"
 
 const (
-	buildIDKey     = key("build_id")
-	serviceHostKey = key("service_host")
-	serviceNameKey = key("service_name")
+	buildIDKey     = key("svc.build_id")
+	serviceHostKey = key("svc.host")
+	serviceNameKey = key("svc.name")
 
-	correlationIDKey = key("correlation_id")
-	isDryRunKey      = key("is_dry_run")
+	correlationIDKey = key("ctx.correlation_id")
+	isDryRunKey      = key("ctx.is_dry_run")
 )
 
 type key string
