@@ -545,9 +545,10 @@ func TestThatASingleHandlingCanTimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	handler := func(ctx context.Context, _ pubsub.Event) error {
+		defer cancel()
+
 		select {
 		case <-ctx.Done():
-			cancel()
 
 		case <-time.After(time.Second):
 			t.Fatal("the ctx had to be cancelled before reaching this")

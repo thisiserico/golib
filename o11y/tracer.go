@@ -151,7 +151,10 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 		node.Name(),
 	}
 
-	logAttrs := []interface{}{strings.Join(ascii, "")}
+	logAttrs := []interface{}{
+		strings.Join(ascii, ""),
+		kv.New("duration", node.EndTime().Sub(node.StartTime())),
+	}
 
 	if node.StatusCode() == codes.Error {
 		logAttrs = append(logAttrs, kv.New("error", true))

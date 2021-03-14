@@ -76,7 +76,12 @@ func (l *logger) log(args ...interface{}) {
 		switch t := arg.(type) {
 		case context.Context:
 			for _, attr := range kv.AllAttributes(t) {
-				entry = entry.WithField(attr.Name(), attr.Value())
+				val := attr.Value()
+				if val == nil {
+					continue
+				}
+
+				entry = entry.WithField(attr.Name(), val)
 			}
 
 		case string:

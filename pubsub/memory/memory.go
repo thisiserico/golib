@@ -174,6 +174,7 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 		return
 
 	case event := <-s.events:
+		ctx := kv.SetDynamicAttributes(ctx, event.Meta.CorrelationID, event.Meta.IsDryRun)
 		ctx, span := s.tracer.Start(
 			ctx,
 			"consume",

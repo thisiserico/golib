@@ -372,6 +372,11 @@ func (s *subscriber) consumeSingleEntry(
 	var event pubsub.Event
 	_ = json.Unmarshal(fields[1].([]byte), &event)
 
+	ctx = kv.SetDynamicAttributes(ctx, event.Meta.CorrelationID, event.Meta.IsDryRun)
+	span.SetAttributes(
+		attribute.String("correlation_id", event.Meta.CorrelationID),
+		attribute.Bool("is_dry_run", event.Meta.IsDryRun),
+	)
 	span.AddEvent(string(event.Name))
 
 	for event.Meta.Attempts < s.maxAttempts {
