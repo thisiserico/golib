@@ -8,7 +8,6 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/json"
-	"github.com/thisiserico/golib/v2/cntxt"
 	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 )
@@ -76,31 +75,9 @@ func (l *logger) log(args ...interface{}) {
 	for _, arg := range args {
 		switch t := arg.(type) {
 		case context.Context:
-			var p kv.Pair
-
-			p = cntxt.BuildID(t)
-			if value := p.String(); value != "" {
-				entry = entry.WithField(p.Name(), value)
+			for _, attr := range kv.AllAttributes(t) {
+				entry = entry.WithField(attr.Name(), attr.Value())
 			}
-			p = cntxt.ServiceHost(t)
-			if value := p.String(); value != "" {
-				entry = entry.WithField(p.Name(), value)
-			}
-			p = cntxt.ServiceName(t)
-			if value := p.String(); value != "" {
-				entry = entry.WithField(p.Name(), value)
-			}
-			p = cntxt.CorrelationID(t)
-			if value := p.String(); value != "" {
-				entry = entry.WithField(p.Name(), value)
-			}
-			p = cntxt.TriggeredBy(t)
-			if value := p.String(); value != "" {
-				entry = entry.WithField(p.Name(), value)
-			}
-			p = cntxt.IsDryRun(t)
-
-			entry = entry.WithField(p.Name(), p.Value())
 
 		case string:
 			msg = t

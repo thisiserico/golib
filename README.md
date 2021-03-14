@@ -14,8 +14,6 @@ which expose a simpler interface from what we're used to.
 
 ## 👩‍💻 Provided modules
 
-The [`cntxt`][cntxt] package lets you interact with known attributes that are required to keep in a context.
-
 The [`errors`][errors] package lets you create contextual errors using a simplified contract.
 
 The [`halt`][halt] package lets you handle graceful shutdowns.
@@ -36,7 +34,6 @@ Different concrete implementations or packages will be added when needed.
 
 
 [opentelemetry]: https://pkg.go.dev/go.opentelemetry.io
-[cntxt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/cntxt
 [errors]: https://pkg.go.dev/github.com/thisiserico/golib/v2/errors
 [halt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/halt
 [kv]: https://pkg.go.dev/github.com/thisiserico/golib/v2/kv

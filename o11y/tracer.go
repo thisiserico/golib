@@ -31,7 +31,7 @@ func newSpanProcessor(log logger.Log) *spanProcessor {
 	}
 }
 
-func (s *spanProcessor) OnStart(_ context.Context, span trace.ReadWriteSpan) {
+func (s *spanProcessor) OnStart(ctx context.Context, span trace.ReadWriteSpan) {
 	if s.shuttedDown {
 		return
 	}
@@ -40,6 +40,12 @@ func (s *spanProcessor) OnStart(_ context.Context, span trace.ReadWriteSpan) {
 	if _, exists := s.spans[traceID]; !exists {
 		s.spans[traceID] = make(map[tracelib.SpanID]trace.ReadOnlySpan)
 	}
+
+	var attrs []attribute.KeyValue
+	for _, attr := range kv.AllAttributes(ctx) {
+		attrs = append(attrs, attribute.Any(attr.Name(), attr.Value()))
+	}
+	span.SetAttributes(attrs...)
 }
 
 func (s *spanProcessor) OnEnd(span trace.ReadOnlySpan) {
