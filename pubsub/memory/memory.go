@@ -16,7 +16,10 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/unit"
 )
 
 var (
@@ -32,8 +35,9 @@ func init() {
 }
 
 type publisher struct {
-	id     string
-	tracer trace.Tracer
+	id           string
+	tracer       trace.Tracer
+	payloadBytes metric.Int64ValueRecorder
 }
 
 // PublisherOption allows to tweak publisher behavior while hidding the
@@ -49,9 +53,12 @@ func WithPublisherID(id string) PublisherOption {
 
 // NewPublisher creates a new in memory publisher implementation.
 func NewPublisher(opts ...PublisherOption) pubsub.Publisher {
+	meter := metric.Must(global.Meter("pubsub/memory"))
+
 	pub := &publisher{
-		id:     uuid.New().String(),
-		tracer: otel.Tracer("pubsub/memory.publisher"),
+		id:           uuid.New().String(),
+		tracer:       otel.Tracer("pubsub/memory.publisher"),
+		payloadBytes: meter.NewInt64ValueRecorder("payload.bytes", metric.WithUnit(unit.Bytes)),
 	}
 
 	for _, opt := range opts {
@@ -74,6 +81,8 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 	defer span.End()
 
 	for _, ev := range events {
+		p.payloadBytes.Record(ctx, int64(len(ev.Payload)), attribute.String("pubsub.event_name", string(ev.Name)))
+		span.AddEvent(fmt.Sprintf("length %db", int64(len(ev.Payload))))
 		span.AddEvent(string(ev.Name))
 	}
 

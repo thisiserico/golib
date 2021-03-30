@@ -21,6 +21,21 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// latency traffic errors saturation
+// number of subscribers
+// events per rate
+
+// meter = global.Meter(‘my_application”)
+// requestBytes = meter.NewIntCounter(“request.bytes”, WithUnit(unit.Bytes))
+// requestLatency = meter.NewFloatValueRecorder(“request.latency”, WithUnit(unit.Second))
+
+// labels = {“path”: “/api/getFoo/{id}”, “host”: “host.name”}
+// requestBytes.Add(req.bytes, labels)
+// requestLatency.Record(req.latency, labels)
+
+// requestBytesBound = requestBytes.Bind(labels)
+// requestBytesBound.Add(req.bytes)
+
 const streamCapacity = 1000000
 
 // Stream let's both –producers and consumers– know what redis streams to interact with.

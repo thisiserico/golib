@@ -171,6 +171,9 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 			case attribute.STRING:
 				val = attr.Value.AsString()
 
+			case attribute.ARRAY:
+				val = attr.Value.AsArray()
+
 			default:
 				continue
 			}
