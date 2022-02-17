@@ -10,7 +10,7 @@ help: ## prints this help
 .PHONY: setup
 setup: ## downloads dependencies
 	go mod download
-	go get -u github.com/mgechev/revive
+	go get github.com/mgechev/revive
 
 
 .PHONY: generate

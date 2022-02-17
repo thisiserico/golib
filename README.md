@@ -5,6 +5,7 @@
 
 
 ## 🧐 Motivation
+
 When kicking off a new project, often times engineers decide not to care about consistency, debuggability and other little details that are not completely necessary to "deliver".
 This set of modules provide exactly that: a way to keep things consistent without getting in your way.
 
@@ -14,8 +15,6 @@ which expose a simpler interface from what we're used to.
 
 ## 👩‍💻 Provided modules
 
-The [`errors`][errors] package lets you create contextual errors using a simplified contract.
-
 The [`halt`][halt] package lets you handle graceful shutdowns.
 
 The [`kv`][kv] package lets you define key-value pairs to be used in multiple situations.
@@ -24,21 +23,24 @@ The [`logger`][logger] package lets you log as you'd normally do, only a simplif
 
 The [`o11y`][o11y] package contains functionality that [`opentelemetry`][opentelemetry] uses to ingest telemetry data.
 
+The [`oops`][oops] package lets you create contextual errors using a simplified contract.
+
 The [`pubsub`][pubsub] package lets you publish and subscribe to messages.
 
 
 ## 🥺 What's next
+
 Existing packages are subject to change.
 [Semantic versioning][semver] is used, backwards compatibility will be kept.
 Different concrete implementations or packages will be added when needed.
 
 
 [opentelemetry]: https://pkg.go.dev/go.opentelemetry.io
-[errors]: https://pkg.go.dev/github.com/thisiserico/golib/v2/errors
 [halt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/halt
 [kv]: https://pkg.go.dev/github.com/thisiserico/golib/v2/kv
 [logger]: https://pkg.go.dev/github.com/thisiserico/golib/v2/logger
 [o11y]: https://pkg.go.dev/github.com/thisiserico/golib/v2/o11y
+[oops]: https://pkg.go.dev/github.com/thisiserico/golib/v2/oops
 [pubsub]: https://pkg.go.dev/github.com/thisiserico/golib/v2/pubsub
 [semver]: https://semver.org
 
