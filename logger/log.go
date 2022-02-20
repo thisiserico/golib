@@ -8,8 +8,8 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/json"
-	"github.com/thisiserico/golib/v2/errors"
-	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/kv"
+	"github.com/thisiserico/golib/oops"
 )
 
 const (
@@ -35,7 +35,7 @@ type Output int
 //   The argument will be used as the log message.
 // - `error`
 //   The error message will be used as the log message. An error log line will
-//   be provided. Error tags will be extracted and used as tags.
+//   be provided. Error details will be extracted and used as tags.
 // - `kv.Pair`
 //   Each pair will be used as a log line tag.
 //
@@ -91,8 +91,8 @@ func (l *logger) log(args ...interface{}) {
 			isError = true
 			msg = t.Error()
 
-			for _, tag := range errors.Tags(t) {
-				entry = entry.WithField(tag.Name(), tag.Value())
+			for _, pair := range oops.Details(t) {
+				entry = entry.WithField(pair.Name(), pair.Value())
 			}
 
 		case kv.Pair:

@@ -5,6 +5,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"sync"
 	"testing"
@@ -12,8 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/segmentio/redis-go"
-	"github.com/thisiserico/golib/v2/errors"
-	"github.com/thisiserico/golib/v2/pubsub"
+	"github.com/thisiserico/golib/oops"
+	"github.com/thisiserico/golib/pubsub"
 )
 
 var redisAddress = flag.String("address", "127.0.0.1:6379", "redis string and port (defaults to 127.0.0.1:6379)")
@@ -26,11 +27,8 @@ func TestThatUnknownEventsCannotBeEmitted(t *testing.T) {
 	if err == nil {
 		t.Fatal("an error was expected, got none")
 	}
-	if !errors.Is(err, errors.NonExistent) {
+	if !errors.Is(err, oops.ErrNonExistent) {
 		t.Fatalf("a non existent error was expected, got %#v", err)
-	}
-	if !errors.Is(err, errors.Permanent) {
-		t.Fatalf("a permanent error was expected, got %#v", err)
 	}
 }
 
@@ -48,11 +46,8 @@ func TestThatNothingGetsEmittedWhenTheContextIsCancelled(t *testing.T) {
 	if err == nil {
 		t.Fatal("an error was expected, got none")
 	}
-	if !errors.Is(err, errors.Context) {
+	if !errors.Is(err, oops.ErrInvalid) {
 		t.Fatalf("a non existent error was expected, got %#v", err)
-	}
-	if !errors.Is(err, errors.Permanent) {
-		t.Fatalf("a permanent error was expected, got %#v", err)
 	}
 }
 
@@ -78,7 +73,7 @@ func TestThatNothingGetsConsumedWhenTheContextIsCancelled(t *testing.T) {
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
+		if errors.Is(err, oops.ErrCancelled) {
 			return
 		}
 		obtainedError = err
@@ -110,7 +105,7 @@ func TestThatNothingGetsConsumedWhenNoPreviousEventsHaveBeenEmitted(t *testing.T
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
+		if errors.Is(err, oops.ErrInvalid) {
 			return
 		}
 		obtainedError = err
@@ -281,7 +276,7 @@ func TestConsumingMultipleEventsFromOneStream(t *testing.T) {
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
+		if errors.Is(err, oops.ErrInvalid) {
 			return
 		}
 		obtainedError = err
@@ -385,7 +380,7 @@ func TestConsumingMultipleEventsFromMultipleStreams(t *testing.T) {
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
+		if errors.Is(err, oops.ErrInvalid) {
 			return
 		}
 
@@ -510,7 +505,7 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 
 	var obtainedError error
 	errHandler := func(_ context.Context, err error, _ *pubsub.Event) {
-		if errors.Is(err, errors.Context) {
+		if errors.Is(err, oops.ErrCancelled) {
 			return
 		}
 		obtainedError = err
@@ -529,6 +524,9 @@ func TestThatStreamEntriesAreNeverLost(t *testing.T) {
 	_ = pub.Emit(context.Background(), event)
 
 	<-ctx.Done()
+	lock.Lock()
+	defer lock.Unlock()
+
 	if got := len(obtainedEvents); got != expectedEvents {
 		t.Fatalf("as many successful handlings as events were expected, want %d, got %d", expectedEvents, got)
 	}

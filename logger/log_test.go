@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/thisiserico/golib/v2/errors"
-	"github.com/thisiserico/golib/v2/kv"
-	"github.com/thisiserico/golib/v2/logger/memory"
+	"github.com/thisiserico/golib/kv"
+	"github.com/thisiserico/golib/logger/memory"
+	"github.com/thisiserico/golib/oops"
 )
 
 func TestLoggingExecutionAttributes(t *testing.T) {
@@ -68,7 +68,7 @@ func TestLoggingAMessage(t *testing.T) {
 func TestLoggingAnError(t *testing.T) {
 	t.Run("with only a message", func(t *testing.T) {
 		const message = "message"
-		err := errors.New(message)
+		err := oops.Invalid(message)
 
 		writer := memory.New()
 		log := New(writer, JSONOutput)
@@ -87,7 +87,7 @@ func TestLoggingAnError(t *testing.T) {
 	t.Run("that contains tags", func(t *testing.T) {
 		const key = "key"
 		const value = "value"
-		err := errors.New(kv.New("key", "value"))
+		err := oops.With(oops.Invalid(""), kv.New("key", "value"))
 
 		writer := memory.New()
 		log := New(writer, JSONOutput)
