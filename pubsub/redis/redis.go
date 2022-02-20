@@ -11,9 +11,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/segmentio/redis-go"
-	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/o11y"
+	"github.com/thisiserico/golib/v2/oops"
 	"github.com/thisiserico/golib/v2/pubsub"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -114,12 +114,9 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 	for _, event := range events {
 		stream, exists := p.streamForEvent[string(event.Name)]
 		if !exists {
-			err := errors.New(
-				ctx,
-				"unknown redis stream for event",
+			err := oops.With(
+				oops.NonExistent("unknown redis stream for event"),
 				kv.New("event_name", event.Name),
-				errors.NonExistent,
-				errors.Permanent,
 			)
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
@@ -132,7 +129,7 @@ func (p *publisher) Emit(ctx context.Context, events ...pubsub.Event) error {
 		redisCapacity := p.streamCapacities[stream]
 		err := p.client.Exec(ctx, "xadd", stream, "maxlen", redisCapacity, "*", "event", js)
 		if err != nil {
-			err = errors.New(ctx, "redis xadd", err, errors.Permanent)
+			err = oops.Invalid("redis xadd: %w", err)
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 
@@ -272,7 +269,7 @@ func (s *subscriber) Consume(
 			}
 		}
 		if err := resp.Close(); err != nil {
-			err = errors.New(ctx, "redis xreadgroup", err, errors.Permanent)
+			err = oops.Invalid("redis xreadgroup: %w", err)
 			errHandler(ctx, err, nil)
 		}
 	}
@@ -331,7 +328,7 @@ func (s *subscriber) handleClaimedButNotProcessedEvents(
 					s.consumeSingleEntry(ctx, stream, redisEntry, handler, errHandler)
 				}
 				if err := resp.Close(); err != nil {
-					err = errors.New(ctx, "redis xautoclaim", err, errors.Permanent)
+					err = oops.Invalid("redis xautoclaim: %w", err)
 					span.RecordError(err)
 					span.SetStatus(codes.Error, err.Error())
 
@@ -401,7 +398,7 @@ func (s *subscriber) consumeSingleEntry(
 
 		errHandler(
 			ctx,
-			errors.New(
+			oops.With(
 				err,
 				kv.New("pubsub.attempt", event.Meta.Attempts),
 				kv.New("pubsub.is_last_attempt", event.Meta.Attempts == s.maxAttempts),

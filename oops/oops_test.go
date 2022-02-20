@@ -139,3 +139,50 @@ func TestContextualDetails(t *testing.T) {
 		})
 	}
 }
+
+func TestContextualDetail(t *testing.T) {
+	tests := []struct {
+		input  error
+		key    string
+		detail kv.Pair
+		exists bool
+	}{
+		{
+			errors.New("oops"),
+			"key",
+			kv.Pair{},
+			false,
+		},
+		{
+			With(errors.New("oops"), kv.New("key", "value")),
+			"key",
+			kv.New("key", "value"),
+			true,
+		},
+		{
+			With(Cancelled("oops"), kv.New("first", 1), kv.New("second", "2")),
+			"second",
+			kv.New("second", "2"),
+			true,
+		},
+		{
+			With(fmt.Errorf("oops: %w", Cancelled("inner: %w", With(errors.New("inner most"), kv.New("inner", "most")))), kv.New("key", "value")),
+			"inner",
+			kv.New("inner", "most"),
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run("", func(t *testing.T) {
+			pair, exists := Detail(test.input, test.key)
+
+			if want, got := test.detail.String(), pair.String(); got != want {
+				t.Errorf("unexpected pair, want %s, got %s", want, got)
+			}
+			if exists != test.exists {
+				t.Errorf("execpected existence indicator, want %t, got %t", test.exists, exists)
+			}
+		})
+	}
+}

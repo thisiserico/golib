@@ -6,7 +6,6 @@ require (
 	github.com/apex/log v1.1.1
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.1.1
-	github.com/mgechev/revive v1.1.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/segmentio/fasthash v1.0.3 // indirect
 	github.com/segmentio/objconv v1.0.1 // indirect

@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thisiserico/golib/v2/errors"
+	"github.com/thisiserico/golib/v2/oops"
 	"github.com/thisiserico/golib/v2/pubsub"
 )
 
 var (
 	knownEventName = pubsub.Name("known")
-	errHandler     = errors.New("handler error")
+	errHandler     = oops.Cancelled("handler error")
 )
 
 func TestConsumingWithACancelledContext(t *testing.T) {
@@ -67,7 +67,7 @@ func TestAHandlerThatFails(t *testing.T) {
 		t.Fatal("an error had to be handled")
 	}
 
-	pair, exists := errors.Tag("pubsub.attempt", obtainedError)
+	pair, exists := oops.Detail(obtainedError, "pubsub.attempt")
 	if !exists {
 		t.Fatal("the handling attempt had to be present in the error")
 	}
@@ -117,7 +117,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatal("the reported event doesn't match the expected one")
 	}
 
-	pair, exists := errors.Tag("pubsub.is_last_attempt", obtainedErrors[0])
+	pair, exists := oops.Detail(obtainedErrors[0], "pubsub.is_last_attempt")
 	if !exists {
 		t.Fatal("the is_last_attempt indicator had to be present in the error")
 	}
@@ -125,7 +125,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatalf("invalid is_last_attempt, want %t, got %T", false, got)
 	}
 
-	pair, exists = errors.Tag("pubsub.attempt", obtainedErrors[1])
+	pair, exists = oops.Detail(obtainedErrors[1], "pubsub.attempt")
 	if !exists {
 		t.Fatal("the handling attempt had to be present in the error")
 	}
@@ -133,7 +133,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 		t.Fatalf("invalid handling attempt, want %d, got %d", maxAttempts, got)
 	}
 
-	pair, exists = errors.Tag("pubsub.is_last_attempt", obtainedErrors[1])
+	pair, exists = oops.Detail(obtainedErrors[1], "pubsub.is_last_attempt")
 	if !exists {
 		t.Fatal("the is_last_attempt indicator had to be present in the error")
 	}

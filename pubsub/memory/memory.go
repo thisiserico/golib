@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/thisiserico/golib/v2/errors"
 	"github.com/thisiserico/golib/v2/kv"
 	"github.com/thisiserico/golib/v2/o11y"
+	"github.com/thisiserico/golib/v2/oops"
 	"github.com/thisiserico/golib/v2/pubsub"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -208,7 +208,7 @@ func (s *subscriber) consumeEvent(ctx context.Context, handler pubsub.Handler, e
 
 			errorHandler(
 				ctx,
-				errors.New(
+				oops.With(
 					err,
 					kv.New("pubsub.attempt", event.Meta.Attempts),
 					kv.New("pubsub.is_last_attempt", event.Meta.Attempts == s.maxAttempts),

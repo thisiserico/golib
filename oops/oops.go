@@ -100,6 +100,18 @@ func Details(err error) []kv.Pair {
 	return append(structured.details, Details(errors.Unwrap(structured))...)
 }
 
+// Detail will find the key-value pair from the given error if exists, or an
+// empty pair otherwise. An indicator for the pair existence is returned as well.
+func Detail(err error, key string) (kv.Pair, bool) {
+	for _, pair := range Details(err) {
+		if pair.Name() == key {
+			return pair, true
+		}
+	}
+
+	return kv.Pair{}, false
+}
+
 type structuredError struct {
 	typology error
 	origin   error
