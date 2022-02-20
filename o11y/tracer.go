@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thisiserico/golib/v2/kv"
-	"github.com/thisiserico/golib/v2/logger"
+	"github.com/thisiserico/golib/kv"
+	"github.com/thisiserico/golib/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/sdk/trace"

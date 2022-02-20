@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/kv"
 )
 
 func TestErrorTypology(t *testing.T) {

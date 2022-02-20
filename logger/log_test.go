@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/thisiserico/golib/v2/kv"
-	"github.com/thisiserico/golib/v2/logger/memory"
-	"github.com/thisiserico/golib/v2/oops"
+	"github.com/thisiserico/golib/kv"
+	"github.com/thisiserico/golib/logger/memory"
+	"github.com/thisiserico/golib/oops"
 )
 
 func TestLoggingExecutionAttributes(t *testing.T) {

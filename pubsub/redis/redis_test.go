@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/segmentio/redis-go"
-	"github.com/thisiserico/golib/v2/oops"
-	"github.com/thisiserico/golib/v2/pubsub"
+	"github.com/thisiserico/golib/oops"
+	"github.com/thisiserico/golib/pubsub"
 )
 
 var redisAddress = flag.String("address", "127.0.0.1:6379", "redis string and port (defaults to 127.0.0.1:6379)")

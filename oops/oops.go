@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/kv"
 )
 
 var (

@@ -8,8 +8,8 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/json"
-	"github.com/thisiserico/golib/v2/kv"
-	"github.com/thisiserico/golib/v2/oops"
+	"github.com/thisiserico/golib/kv"
+	"github.com/thisiserico/golib/oops"
 )
 
 const (

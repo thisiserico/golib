@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/thisiserico/golib/v2/kv"
+	"github.com/thisiserico/golib/kv"
 )
 
 // ID indicates the event identifier.

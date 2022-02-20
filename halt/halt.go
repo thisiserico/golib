@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/thisiserico/golib/v2/kv"
-	"github.com/thisiserico/golib/v2/logger"
+	"github.com/thisiserico/golib/kv"
+	"github.com/thisiserico/golib/logger"
 )
 
 // Halter will be used to wait for shutdown requests.

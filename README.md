@@ -1,7 +1,7 @@
 # golib
 > An extremely opinionated set of modules
 
-[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/mod/github.com/thisiserico/golib/v2?tab=packages)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/mod/github.com/thisiserico/golib?tab=packages)
 
 
 ## 🧐 Motivation
@@ -36,11 +36,11 @@ Different concrete implementations or packages will be added when needed.
 
 
 [opentelemetry]: https://pkg.go.dev/go.opentelemetry.io
-[halt]: https://pkg.go.dev/github.com/thisiserico/golib/v2/halt
-[kv]: https://pkg.go.dev/github.com/thisiserico/golib/v2/kv
-[logger]: https://pkg.go.dev/github.com/thisiserico/golib/v2/logger
-[o11y]: https://pkg.go.dev/github.com/thisiserico/golib/v2/o11y
-[oops]: https://pkg.go.dev/github.com/thisiserico/golib/v2/oops
-[pubsub]: https://pkg.go.dev/github.com/thisiserico/golib/v2/pubsub
+[halt]: https://pkg.go.dev/github.com/thisiserico/golib/halt
+[kv]: https://pkg.go.dev/github.com/thisiserico/golib/kv
+[logger]: https://pkg.go.dev/github.com/thisiserico/golib/logger
+[o11y]: https://pkg.go.dev/github.com/thisiserico/golib/o11y
+[oops]: https://pkg.go.dev/github.com/thisiserico/golib/oops
+[pubsub]: https://pkg.go.dev/github.com/thisiserico/golib/pubsub
 [semver]: https://semver.org
 

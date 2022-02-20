@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thisiserico/golib/v2/oops"
-	"github.com/thisiserico/golib/v2/pubsub"
+	"github.com/thisiserico/golib/oops"
+	"github.com/thisiserico/golib/pubsub"
 )
 
 var (
