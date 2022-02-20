@@ -9,7 +9,7 @@
 When kicking off a new project, often times engineers decide not to care about consistency, debuggability and other little details that are not completely necessary to "deliver".
 This set of modules provide exactly that: a way to keep things consistent without getting in your way.
 
-At the same time, it provides an opinionated way on how certain elements should look like. Examples are the [`errors`][errors] or [`logger`][logger] packages,
+At the same time, it provides an opinionated way on how certain elements should look like. Examples are the [`oops`][oops] or [`logger`][logger] packages,
 which expose a simpler interface from what we're used to.
 
 

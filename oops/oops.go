@@ -6,6 +6,8 @@ package oops
 import (
 	"errors"
 	"fmt"
+
+	"github.com/thisiserico/golib/v2/kv"
 )
 
 var (
@@ -74,9 +76,34 @@ func Transient(msg string, args ...interface{}) error {
 	return newError(ErrTransient, msg, args...)
 }
 
+// With appends the given key-value pairs to the error, which doesn't
+// necessarily have been created by this package.
+func With(err error, pairs ...kv.Pair) error {
+	if structured, ok := err.(structuredError); ok {
+		structured.details = append(structured.details, pairs...)
+		return structured
+	}
+
+	return structuredError{
+		origin:  err,
+		details: append([]kv.Pair{}, pairs...),
+	}
+}
+
+// Details extracts all the key-value pairs from the given error.
+func Details(err error) []kv.Pair {
+	var structured structuredError
+	if !errors.As(err, &structured) {
+		return nil
+	}
+
+	return append(structured.details, Details(errors.Unwrap(structured))...)
+}
+
 type structuredError struct {
 	typology error
 	origin   error
+	details  []kv.Pair
 }
 
 func newError(err error, msg string, args ...interface{}) error {
