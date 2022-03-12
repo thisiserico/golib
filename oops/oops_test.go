@@ -36,6 +36,14 @@ func TestErrorTypology(t *testing.T) {
 	}
 }
 
+func TestCustomErrorTypology(t *testing.T) {
+	customError := Invalid("an error message")
+
+	if !errors.Is(customError, customError) {
+		t.Error("the error should be itself")
+	}
+}
+
 func TestErrorWrapping(t *testing.T) {
 	tests := []struct {
 		input  error
