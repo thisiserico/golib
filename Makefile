@@ -22,10 +22,10 @@ lint: ## runs the code linter
 
 .PHONY: test/unit
 test/unit: ## runs unit tests
-	go test -tags=unit -count=1 -race -cover -v ./...
+	go test -tags=unit -count=1 -race -cover ./...
 
 .PHONY: test/redis
 test/redis: ## runs redis integration tests
 	docker-compose -f pubsub/redis/docker-compose.yml up -d
-	go test -tags=redis -count=1 -race -cover -v ./pubsub/redis
+	go test -tags=redis -count=1 -race -cover ./pubsub/redis
 

@@ -10,10 +10,7 @@ import (
 	"github.com/thisiserico/golib/pubsub"
 )
 
-var (
-	knownEventName = pubsub.Name("known")
-	errHandler     = oops.Cancelled("handler error")
-)
+var knownEventName = pubsub.Name("known")
 
 func TestConsumingWithACancelledContext(t *testing.T) {
 	var messageWasHandled bool
@@ -45,7 +42,7 @@ func TestConsumingWithACancelledContext(t *testing.T) {
 
 func TestAHandlerThatFails(t *testing.T) {
 	handler := func(_ context.Context, _ pubsub.Event) error {
-		return errHandler
+		return oops.Cancelled("handler error")
 	}
 
 	var obtainedError error
@@ -82,7 +79,7 @@ func TestAHandlerThatFailsMultipleTimes(t *testing.T) {
 	const maxAttempts = 2
 
 	handler := func(_ context.Context, _ pubsub.Event) error {
-		return errHandler
+		return oops.Cancelled("handler error")
 	}
 
 	var (
