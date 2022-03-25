@@ -36,7 +36,7 @@ func (s *spanProcessor) OnStart(_ context.Context, span trace.ReadWriteSpan) {
 		return
 	}
 
-	traceID := span.SpanContext().TraceID
+	traceID := span.SpanContext().TraceID()
 	if _, exists := s.spans[traceID]; !exists {
 		s.spans[traceID] = make(map[tracelib.SpanID]trace.ReadOnlySpan)
 	}
@@ -47,15 +47,15 @@ func (s *spanProcessor) OnEnd(span trace.ReadOnlySpan) {
 		return
 	}
 
-	traceID := span.SpanContext().TraceID
-	spanID := span.SpanContext().SpanID
+	traceID := span.SpanContext().TraceID()
+	spanID := span.SpanContext().SpanID()
 	s.spans[traceID][spanID] = span
 
-	if isRoot := !span.Parent().SpanID.IsValid(); !isRoot {
+	if isRoot := !span.Parent().SpanID().IsValid(); !isRoot {
 		return
 	}
 
-	s.print(span.SpanContext().TraceID)
+	s.print(span.SpanContext().TraceID())
 	delete(s.spans, traceID)
 }
 
@@ -66,8 +66,8 @@ func (s *spanProcessor) Shutdown(_ context.Context) error {
 	return nil
 }
 
-func (s *spanProcessor) ForceFlush() {
-	_ = s.Shutdown(nil)
+func (s *spanProcessor) ForceFlush(ctx context.Context) error {
+	return s.Shutdown(ctx)
 }
 
 type spanTree map[tracelib.SpanID]*spanNode
@@ -101,7 +101,7 @@ func (s *spanProcessor) print(traceID tracelib.TraceID) {
 
 	tree := make(spanTree)
 	for _, span := range s.spans[traceID] {
-		spanID := span.SpanContext().SpanID
+		spanID := span.SpanContext().SpanID()
 
 		node, exists := tree[spanID]
 		if !exists {
@@ -110,14 +110,14 @@ func (s *spanProcessor) print(traceID tracelib.TraceID) {
 		node.ReadOnlySpan = span
 		tree[spanID] = node
 
-		if isRoot := !span.Parent().SpanID.IsValid(); isRoot {
+		if isRoot := !span.Parent().SpanID().IsValid(); isRoot {
 			rootSpanID = spanID
 			traceStart, traceEnd = span.StartTime(), span.EndTime()
 
 			continue
 		}
 
-		parentID := span.Parent().SpanID
+		parentID := span.Parent().SpanID()
 		parent, exists := tree[parentID]
 		if !exists {
 			parent = &spanNode{}
@@ -150,7 +150,7 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 		kv.New("duration", node.EndTime().Sub(node.StartTime())),
 	}
 
-	if node.StatusCode() == codes.Error {
+	if node.Status().Code == codes.Error {
 		logAttrs = append(logAttrs, kv.New("error", true))
 	}
 
@@ -179,7 +179,7 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 		}
 	}
 
-	appendEvents := func(evs []tracelib.Event) {
+	appendEvents := func(evs []trace.Event) {
 		events := make([]string, 0, len(evs))
 		for _, ev := range evs {
 			elapsed := ev.Time.Sub(node.StartTime())
@@ -197,6 +197,6 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 
 	sort.Sort(node.children)
 	for _, child := range node.children {
-		s.printSpan(tree, child.SpanContext().SpanID, traceStart, traceEnd)
+		s.printSpan(tree, child.SpanContext().SpanID(), traceStart, traceEnd)
 	}
 }

@@ -22,10 +22,8 @@ func Configure(log logger.Log) {
 // Attributes extracts all the known pairs from the context and converts
 // them into a slice of attributes.
 func Attributes(ctx context.Context) []attribute.KeyValue {
-	attrs := make([]attribute.KeyValue, 0, 5)
-	for _, attr := range kv.AllAttributes(ctx) {
-		attrs = append(attrs, attribute.Any(attr.Name(), attr.Value()))
+	return []attribute.KeyValue{
+		attribute.String("correlation_id", kv.CorrelationID(ctx).String()),
+		attribute.Bool("is_dry_run", kv.IsDryRun(ctx).Bool()),
 	}
-
-	return attrs
 }
