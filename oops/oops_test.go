@@ -42,6 +42,14 @@ func TestCustomErrorTypology(t *testing.T) {
 	if !errors.Is(customError, customError) {
 		t.Error("the error should be itself")
 	}
+
+	decoratedError := With(customError, kv.New("key", "value"))
+	if _, exists := Detail(decoratedError, "key"); !exists {
+		t.Error("a key-value pair had to exist in the error")
+	}
+	if length := len(Details(customError)); length != 0 {
+		t.Error("no key-value pairs had to exist in the error")
+	}
 }
 
 func TestErrorWrapping(t *testing.T) {
@@ -78,6 +86,11 @@ func TestContextualDetails(t *testing.T) {
 		details []kv.Pair
 		output  string
 	}{
+		{
+			nil,
+			nil,
+			"",
+		},
 		{
 			With(errors.New("oops"), kv.New("key", "value")),
 			nil,

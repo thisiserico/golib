@@ -2,8 +2,6 @@ package oops
 
 import (
 	"errors"
-
-	"github.com/thisiserico/golib/kv"
 )
 
 var (
@@ -70,40 +68,4 @@ func Timeout(msg string, args ...interface{}) error {
 // Transient creates a new error that satisfies errors.Is(err, ErrTransient).
 func Transient(msg string, args ...interface{}) error {
 	return newError(ErrTransient, msg, args...)
-}
-
-// With appends the given key-value pairs to the error, which doesn't
-// necessarily have been created by this package.
-func With(err error, pairs ...kv.Pair) error {
-	if structured, ok := err.(structuredError); ok {
-		structured.details = append(structured.details, pairs...)
-		return structured
-	}
-
-	return structuredError{
-		origin:  err,
-		details: append([]kv.Pair{}, pairs...),
-	}
-}
-
-// Details extracts all the key-value pairs from the given error.
-func Details(err error) []kv.Pair {
-	var structured structuredError
-	if !errors.As(err, &structured) {
-		return nil
-	}
-
-	return append(structured.details, Details(errors.Unwrap(structured))...)
-}
-
-// Detail will find the key-value pair from the given error if exists, or an
-// empty pair otherwise. An indicator for the pair existence is returned as well.
-func Detail(err error, key string) (kv.Pair, bool) {
-	for _, pair := range Details(err) {
-		if pair.Name() == key {
-			return pair, true
-		}
-	}
-
-	return kv.Pair{}, false
 }
