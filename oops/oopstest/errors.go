@@ -1,3 +1,4 @@
+// Package oopstest provide handy methods to be used along oops.
 package oopstest
 
 import "errors"

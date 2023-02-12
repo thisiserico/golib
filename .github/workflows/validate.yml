@@ -6,14 +6,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-
-    - name: run linter
-      uses: cedrickring/golang-action/go1.16@1.7.0
+    - uses: actions/setup-go@v3
       with:
-        args: make setup lint
+        go-version: '>=1.19'
 
-    - name: run unit tests
+    - name: 🕵️ run linter
+      run: make setup lint
+
+    - name: 👮‍♀️ run unit tests
       run: make test/unit
 
-    - name: run redis integration tests
+    - name: 🔌 run redis integration tests
       run: make test/redis
