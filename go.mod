@@ -1,6 +1,6 @@
 module github.com/thisiserico/golib
 
-go 1.17
+go 1.19
 
 require (
 	github.com/apex/log v1.1.1

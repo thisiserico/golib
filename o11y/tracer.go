@@ -2,6 +2,7 @@ package o11y
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -149,9 +150,9 @@ func (s *spanProcessor) printSpan(tree spanTree, id tracelib.SpanID, traceStart,
 		strings.Join(ascii, ""),
 		kv.New("duration", node.EndTime().Sub(node.StartTime())),
 	}
-
-	if node.Status().Code == codes.Error {
-		logAttrs = append(logAttrs, kv.New("error", true))
+	if status := node.Status(); status.Code == codes.Error {
+		logAttrs[0] = errors.New(logAttrs[0].(string))
+		logAttrs = append(logAttrs, kv.New("error", status.Description))
 	}
 
 	appendAttributes := func(attrs []attribute.KeyValue) {
