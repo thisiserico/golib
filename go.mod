@@ -1,0 +1,25 @@
+module github.com/thisiserico/golib/v2
+
+go 1.16
+
+// Deprecated: this v2 module has been abandoned; use github.com/thisiserico/golib instead.
+retract (
+	v2.4.1 // Contains retractions only.
+	[v2.0.0, v2.4.0] // Abandoned; superseded by the v0 module path.
+)
+
+require (
+	github.com/apex/log v1.1.1
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/fatih/color v1.9.0 // indirect
+	github.com/google/uuid v1.1.1
+	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/segmentio/fasthash v1.0.3 // indirect
+	github.com/segmentio/objconv v1.0.1 // indirect
+	github.com/segmentio/redis-go v0.3.0
+	go.opentelemetry.io/otel v0.18.0
+	go.opentelemetry.io/otel/sdk v0.18.0
+	go.opentelemetry.io/otel/trace v0.18.0
+	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
+)
