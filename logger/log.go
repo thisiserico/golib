@@ -28,16 +28,16 @@ type Output int
 // composition. The order is important, as arguments can override. By default,
 // info log lines are provided.
 //
-// - `context.Context`
-//   Known execution indicators are extracted from the context and provided in
-//   the log line as tags.
-// - `string`
-//   The argument will be used as the log message.
-// - `error`
-//   The error message will be used as the log message. An error log line will
-//   be provided. Error details will be extracted and used as tags.
-// - `kv.Pair`
-//   Each pair will be used as a log line tag.
+//   - `context.Context`
+//     Known execution indicators are extracted from the context and provided in
+//     the log line as tags.
+//   - `string`
+//     The argument will be used as the log message.
+//   - `error`
+//     The error message will be used as the log message. An error log line will
+//     be provided. Error details will be extracted and used as tags.
+//   - `kv.Pair`
+//     Each pair will be used as a log line tag.
 //
 // Other types will be ignored.
 type Log func(...interface{})
